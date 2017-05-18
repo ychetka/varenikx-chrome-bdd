@@ -1,7 +1,6 @@
-#####################################################################
-##Bdd test in docker image.                                        ##
-##With this you must run bdd test in docker image (in chrome)      ##
-#####################################################################
+
+##Bdd test in docker image.
+With this you must run bdd test in docker image (in chrome)
 
 
 You project must be use:
