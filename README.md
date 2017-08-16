@@ -1,6 +1,6 @@
 #####################################################################
-##Bdd test in docker image.                                        ##
-##With this you must run bdd test in docker image (in chrome)      ##
+## Bdd test in docker image.
+## build.sh is script for build Dockerfile
 #####################################################################
 
 
