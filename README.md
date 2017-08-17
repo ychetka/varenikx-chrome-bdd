@@ -1,7 +1,7 @@
-#############################################################
-##Bdd test in docker image.                                ##
-##build.sh is script for build Dockerfile                  ##
-#############################################################
+###########################################################
+##Bdd test in docker image.
+##build.sh is script for build Dockerfile
+###########################################################
 
 
 You project must be use:
