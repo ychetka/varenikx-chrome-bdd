@@ -17,7 +17,7 @@ ENV HOME "/home/bdd"
 ENV NVM_DIR "/home/bdd/.nvm"
 
 #base
-RUN apt-get update -qqy && apt-get -qqy --no-install-recommends install ca-certificates unzip wget apt-utils
+RUN apt-get update -qqy && apt-get -qqy --no-install-recommends install ca-certificates unzip wget apt-utils git jq
 
 #user
 RUN sudo useradd bdd --shell /bin/bash --create-home && sudo usermod -a -G sudo bdd && echo 'ALL ALL = (ALL) NOPASSWD: ALL' >> /etc/sudoers && echo 'bdd:bdd' | chpasswd

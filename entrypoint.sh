@@ -1,13 +1,52 @@
 #!/bin/bash
 
-function setProjectAccess {
+function initGit {
+  echo -e "\x1b[5;42;37mGit mode\x1b[0m"
+
+  export REPOSITORY=$(echo ${GIT} | jq -r '.repository')
+  export AUTH_TOKEN=$(echo ${GIT} | jq -r '.token')
+  export PULL_REQUEST_Id=$(echo ${GIT} | jq -r '.pullRequestId')
+  export BRANCH=$(echo ${GIT} | jq -r '.branch')
+
+  echo -e '\E[37;44m'"\033[1mREPOSITORY: $REPOSITORY\033[0m"
+  echo -e '\E[37;44m'"\033[1mAUTH_TOKEN: $AUTH_TOKEN\033[0m"
+  echo -e '\E[37;44m'"\033[1mPULL_REQUEST_Id: $PULL_REQUEST_Id\033[0m"
+  echo -e '\E[37;44m'"\033[1mBRANCH: $BRANCH\033[0m"
+
+  echo -e "\x1b[37;43mWaiting git...\x1b[0m"
+  git init
+  echo -e "\x1b[37;43mClone https://$AUTH_TOKEN@github.com/$REPOSITORY.git\x1b[0m"
+
+  git clone https://$AUTH_TOKEN@github.com/$REPOSITORY.git ./project
+  echo -e "\x1b[37;43mGet pr...\x1b[0m"
+
+  cd $WORKDIR
+
+  git fetch origin pull/$PULL_REQUEST_Id/head:$BRANCH
+  git checkout $BRANCH
+}
+
+function initFiles {
+  echo -e "\x1b[5;42;37mFile mode\x1b[0m"
   sudo -E -i -u root \
     cp -avr /project "/home/bdd/project" >  /dev/null
+}
+
+function setProjectAccess {
+  sudo -E -i -u root \
+    chmod -R 777 '/home/bdd'
+  cd /home/bdd
+
+  mkdir project
 
   export WORKDIR="/home/bdd/project"
 
-  sudo -E -i -u root \
-    chmod 777 $WORKDIR
+  if [ -n "$GIT" ]; then
+    initGit
+  else
+    initFiles
+  fi
+
   sudo -E -i -u root \
     chmod -R 777 $WORKDIR
   sudo -E -i -u root \
@@ -18,10 +57,13 @@ setProjectAccess
 
 export GEOMETRY="$SCREEN_WIDTH""x""$SCREEN_HEIGHT""x""$SCREEN_DEPTH"
 export DISPLAY=:0
-export X11VNCLOG=$WORKDIR/x11vnc.log
-export FLUXBOXLOG=$WORKDIR/fluxbox.log
-export XVFBLOG=$WORKDIR/xvfb.log
-export WEBPACKLOG=$WORKDIR/webpack.log
+
+if [ -n "$GIT" ]; then
+  export WEBPACKLOG=/$ID/webpack.log
+else
+  export WEBPACKLOG=$WORKDIR/webpack.log
+fi
+
 
 #red message
 export ERRORMESSAGE="\x1b[5;41;37mFatal Error\x1b[0m"
@@ -44,18 +86,17 @@ function setState () {
 }
 export -f setState
 
-function shutdown {
-  kill -s SIGTERM $NODE_PID
+# $1 exit code
+function shutdown () {
+  if [ -n "$GIT" ]; then
+    echo -e "$1" > /$ID/$1
+  else
+    echo -e "$1" > $WORKDIR/$1
+  fi
+
+  kill -s SIGKILL $NODE_PID
   wait $NODE_PID
 }
-
-# $1 filename
-function catLog () {
-  #orange
-  echo -en "\033[37;1;41m webpack.log \033[0m"
-  cat $WEBPACKLOG
-}
-export -f catLog
 
 function initXvfb {
 
@@ -107,7 +148,8 @@ do
     fi
 
   sleep 5
-  if [ i = 99 ]; then
+
+  if (( $i == 99 )); then
     echo -e "\x1b[5;41;37mFailed TIMEOUT\x1b[0m"
     echo -e "\x1b[5;41;37mFailed 1\x1b[0m"
     setState "init.failed"
@@ -133,8 +175,7 @@ function webpackInitWatcher {
 
       if [ -f "$WORKDIR/init.failed" ]; then
         echo -e $ERRORMESSAGE
-        catLog
-        exit 1
+        shutdown 1
       fi
 
       if [ -f "$WORKDIR/init.started" ]; then
@@ -154,17 +195,24 @@ function webpackInitWatcher {
 
         if [ -n "$RUN" ]; then
           echo -e '\E[37;44m'"\033[1mRUN: $RUN\033[0m"
-          eval 'cd $WORKDIR && $RUN'
+          /bin/bash -c 'cd $WORKDIR && $RUN'
+
+          echo -e '\E[37;44m'"\033[1mBDD: ENDED!\033[0m"
+
+          # FIXME система статистики
+          # FIXME система rerun
+
+          #FIXME результат тестов
+          result=0
+          shutdown $result
         fi
 
         break
       fi
 
-      if [ i = 99 ]; then
+      if (( $i == 99 )); then
         echo -e $TIMEOUTMESSAGE
-        catLog
-        break
-        exit 1
+        shutdown 1
       fi
 done
 }
@@ -178,8 +226,8 @@ if [ -f "$WORKDIR/package.json" ]; then
   initYarn
   webpackInitWatcher
 else
-  setState 'init.failed'
-  exit 1
+    echo -e "\x1b[5;41;37mFailed 1\x1b[0m"
+    shutdown 1
 fi
 
 
