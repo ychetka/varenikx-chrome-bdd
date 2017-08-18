@@ -94,7 +94,7 @@ function shutdown () {
     echo -e "$1" > $WORKDIR/$1
   fi
 
-  kill -s SIGKILL $NODE_PID
+  kill -s SIGTERM $NODE_PID
   wait $NODE_PID
 }
 
