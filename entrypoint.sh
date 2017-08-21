@@ -197,12 +197,18 @@ function webpackInitWatcher {
           echo -e '\E[37;44m'"\033[1mRUN: $RUN\033[0m"
           /bin/bash -c 'cd $WORKDIR && $RUN'
 
-          # FIXME система статистики
-          # FIXME система rerun
+          export isFailed=$(node ./bin/failed-parser.js);
 
-          #FIXME результат тестов
+          if [ "$isFailed" = "true" ]; then
+            echo -e "\x1b[5;41;37mBDD RERUN\x1b[0m"
+            echo -e '\E[37;44m'"\033[1mRUN: $RUN --rerun\033[0m"
+            /bin/bash -c 'cd $WORKDIR && $RUN --rerun'
 
-          isFailed=$(node ./bin/failed-parser.js);
+            export isFailed=$(node ./bin/failed-parser.js);
+          fi
+
+          #FIXME система статистики
+
           if [ "$isFailed" = "true" ]; then
             echo -e "\x1b[5;41;37mBDD: FAILED\x1b[0m"
             shutdown 1
