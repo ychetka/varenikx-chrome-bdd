@@ -18,4 +18,9 @@ You project must be have:
 *in docker:
 /*'yarn run test' - this command run you bdd tests.*/
 docker pull varenikx/chrome-bdd:latest
+
 docker run -v /path/to/you/project/:/project -e RUN='yarn run test:spec' varenikx/chrome-bdd:latest
+or
+docker -e GIT='{"repository":"...","token":"...","pullRequestId":"...","branch":"...' -e RUN='yarn run test:spec' varenikx/chrome-bdd:latest
+
+

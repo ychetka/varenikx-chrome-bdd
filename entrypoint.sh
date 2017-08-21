@@ -204,6 +204,7 @@ function webpackInitWatcher {
             echo -e '\E[37;44m'"\033[1mRUN: $RUN --rerun\033[0m"
             /bin/bash -c 'cd $WORKDIR && $RUN --rerun'
 
+            #FIXME проверить файл на существование и пустоту
             export isFailed=$(node ./bin/failed-parser.js);
           fi
 
