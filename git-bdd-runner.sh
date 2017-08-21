@@ -14,7 +14,7 @@ cd $HOME
 
 
 
-COMMAND="yarn run test:spec -- --filter=sales-pre --skipMenu"
+COMMAND="yarn run test:spec -- --skipMenu --skipTags=blank,bug,DNDTest"
 
 docker run --name "$ID" -e ID="$ID" -e GIT="$1" -e RUN="$COMMAND" -v "$HOME/$ID/":"/$ID" varenikx/chrome-bdd:latest &
 
