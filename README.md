@@ -21,6 +21,15 @@ docker pull varenikx/chrome-bdd:latest
 
 docker run -v /path/to/you/project/:/project -e RUN='yarn run test:spec' varenikx/chrome-bdd:latest
 or
-docker -e GIT='{"repository":"...","token":"...","pullRequestId":"...","branch":"...' -e RUN='yarn run test:spec' varenikx/chrome-bdd:latest
+docker run -e GIT='{"repository":"...","token":"...","pullRequestId":"...","branch":"...' -e RUN='yarn run test:spec' varenikx/chrome-bdd:latest
+
+*support RERUN
+docker run -e RERUNCOUNT="5" -e GIT='...' -e RUN='yarn run test:spec' varenikx/chrome-bdd:latest
+
+*support exit code
+docker run -e FAILEDPARSER="node ./bin/cucumber-failed-parser.js" -e GIT='...' -e RUN='yarn run test:spec' varenikx/chrome-bdd:latest
+
+FAILEDPARSER - parser will be return true or false
+
 
 

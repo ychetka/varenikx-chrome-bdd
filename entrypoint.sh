@@ -197,19 +197,29 @@ function webpackInitWatcher {
           echo -e '\E[37;44m'"\033[1mRUN: $RUN\033[0m"
           /bin/bash -c 'cd $WORKDIR && $RUN'
 
-          export isFailed=$(node ./bin/failed-parser.js);
+          isFailed=$(/bin/bash -c "$FAILEDPARSER");
 
-          if [ "$isFailed" = "true" ]; then
-            echo -e "\x1b[5;41;37mBDD RERUN\x1b[0m"
-            echo -e '\E[37;44m'"\033[1mRUN: $RUN --rerun\033[0m"
-            /bin/bash -c 'cd $WORKDIR && $RUN --rerun'
+          if [ -n "$RERUNCOUNT" ]; then
 
-            #FIXME проверить файл на существование и пустоту
-            export isFailed=$(node ./bin/failed-parser.js);
+            if [ "$isFailed" = "true" ]; then
+              for i in $(seq 1 $RERUNCOUNT)
+                do
+                  isFailed=$(/bin/bash -c "$FAILEDPARSER");
+
+                  if [ "$isFailed" = "true" ]; then
+                    echo -e "\x1b[5;41;37mBDD RERUN. Attempt number $i\x1b[0m"
+                    echo -e '\E[37;44m'"\033[1mRUN: $RUN --rerun\033[0m"
+                    /bin/bash -c 'cd $WORKDIR && $RUN --rerun'
+                  else
+                    break
+                  fi
+              done
+
+              isFailed=$(/bin/bash -c "$FAILEDPARSER");
+            fi
           fi
 
           #FIXME система статистики
-
           if [ "$isFailed" = "true" ]; then
             echo -e "\x1b[5;41;37mBDD: FAILED\x1b[0m"
             shutdown 1

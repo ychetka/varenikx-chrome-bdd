@@ -16,7 +16,7 @@ cd $HOME
 
 COMMAND="yarn run test:spec -- --skipMenu --skipTags=blank,bug,DNDTest"
 
-docker run --name "$ID" -e ID="$ID" -e GIT="$1" -e RUN="$COMMAND" -v "$HOME/$ID/":"/$ID" varenikx/chrome-bdd:latest &
+docker run --name "$ID" -e ID="$ID" -e GIT="$1" -e RERUNCOUNT="5" -e FAILEDPARSER="node ./bin/cucumber-failed-parser.js" -e RUN="$COMMAND" -v "$HOME/$ID/":"/$ID" varenikx/chrome-bdd:latest &
 
 # 90 minutes
 for i in $(seq 1 60)
