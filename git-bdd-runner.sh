@@ -14,7 +14,7 @@ cd $HOME
 
 
 
-COMMAND="yarn run test:spec -- --skipMenu --skipTags=blank,bug,DNDTest"
+COMMAND="yarn run test:spec -- --workspace=fe1.corplan.ru --skipMenu --skipTags=blank,bug,DNDTest,modeller"
 
 docker run --name "$ID" -e ID="$ID" -e GIT="$1" -e RERUNCOUNT="5" -e FAILEDPARSER="node ./bin/cucumber-failed-parser.js" -e RUN="$COMMAND" -v "$HOME/$ID/":"/$ID" varenikx/chrome-bdd:latest &
 
