@@ -14,15 +14,15 @@ cd $HOME
 
 
 
-COMMAND="yarn run test:spec -- --workspace=fe1.corplan.ru --skipMenu --skipTags=blank,bug,modeller"
+COMMAND="yarn run test:spec -- --workspace=bdd.corplan.ru --modelId=3c5008d019203fcdfcb9226435580787 --skipMenu --skipTags=blank,bug,modeller"
 
 docker run --name "$ID" -e ID="$ID" -e GIT="$1" -e RERUNCOUNT="5" -e FAILEDPARSER="node ./bin/cucumber-failed-parser.js" -e RUN="$COMMAND" -v "$HOME/$ID/":"/$ID" varenikx/chrome-bdd:latest &
 
-# 90 minutes
+# 150 minutes
 for i in $(seq 1 60)
   do
     #slep
-    sleep 90
+    sleep 150
 
     if [ -f "$HOME/$ID/1" ]; then
       # failed
