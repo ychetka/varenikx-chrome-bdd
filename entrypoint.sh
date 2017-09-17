@@ -150,8 +150,7 @@ do
   sleep 5
 
   if (( $i == 99 )); then
-    echo -e "\x1b[5;41;37mFailed TIMEOUT\x1b[0m"
-    echo -e "\x1b[5;41;37mFailed yarn\x1b[0m"
+    echo -e "\x1b[5;41;37mFailed yarn TIMEOUT\x1b[0m"
     setState "init.failed"
     break
   fi
