@@ -3,6 +3,7 @@
 ID=$(uuidgen)
 
 mkdir $ID
+chmod 0777 $ID
 
 function killContainer {
   containerId=$(docker ps -aqf "name=$ID")
