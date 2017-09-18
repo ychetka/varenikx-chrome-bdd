@@ -93,7 +93,7 @@ RUN apt-get update -qqy \
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
-RUN apt-get update -qqy && apt-get -qqy --no-install-recommends install bzip2
+
 EXPOSE 5900
 
 CMD ["su", "-", "bdd", "-c", "/bin/bash"]
