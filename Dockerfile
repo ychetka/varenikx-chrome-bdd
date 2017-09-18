@@ -1,8 +1,8 @@
 # DOCKER-VERSION 1.6.0
-# DESCRIPTION    Siklui ide with chrome browser and vnc for linux hosts
+# DESCRIPTION    Bdd in chrome browser and vnc for linux hosts
 
 # Pull base image
-FROM ubuntu:14.04
+FROM debian:8.8
 
 ENV DEBIAN_FRONTEND noninteractive
 ENV SCREEN_WIDTH 1920
@@ -17,7 +17,7 @@ ENV HOME "/home/bdd"
 ENV NVM_DIR "/home/bdd/.nvm"
 
 #base
-RUN apt-get update -qqy && apt-get -qqy --no-install-recommends install ca-certificates unzip wget apt-utils git jq
+RUN apt-get update -qqy && apt-get -qqy --no-install-recommends install ca-certificates unzip wget git jq sudo bzip2 mc
 
 #user
 RUN sudo useradd bdd --shell /bin/bash --create-home && sudo usermod -a -G sudo bdd && echo 'ALL ALL = (ALL) NOPASSWD: ALL' >> /etc/sudoers && echo 'bdd:bdd' | chpasswd
@@ -57,10 +57,10 @@ RUN mkdir -p $HOME/.vnc && x11vnc -storepasswd bdd $HOME/.vnc/passwd
 
 USER root
 #locale
-ENV LANGUAGE en_US.UTF-8
+RUN apt-get update -qqy && apt-get -qqy --no-install-recommends install locales locales-all
+ENV LC_ALL en_US.UTF-8
 ENV LANG en_US.UTF-8
-RUN locale-gen en_US.UTF-8 && dpkg-reconfigure --frontend noninteractive locales && apt-get update -qqy && apt-get -qqy --no-install-recommends install language-pack-en
-
+ENV LANGUAGE en_US.UTF-8
 
 #fonts
 RUN apt-get update -qqy \
@@ -93,7 +93,7 @@ RUN apt-get update -qqy \
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
-
+RUN apt-get update -qqy && apt-get -qqy --no-install-recommends install bzip2
 EXPOSE 5900
 
 CMD ["su", "-", "bdd", "-c", "/bin/bash"]

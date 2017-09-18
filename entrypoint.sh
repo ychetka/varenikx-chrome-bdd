@@ -188,7 +188,7 @@ function webpackInitWatcher {
         echo -e "\x1b[5;42;37mYou must connect with VNC client\x1b[0m"
         echo -e "\x1b[5;42;37mNetwork information\x1b[0m"
         echo -e "\x1b[5;42;37mip route: $(ip route show)\x1b[0m"
-        eval "/sbin/ifconfig"
+        echo -e "\x1b[5;42;37mip route: $(ip addr)\x1b[0m"
 
         sleep 10
 
