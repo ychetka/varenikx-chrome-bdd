@@ -2,7 +2,7 @@
 # DESCRIPTION    Bdd in chrome browser and vnc for linux hosts
 
 # Pull base image
-FROM debian:8.8
+FROM debian:8.9
 
 ENV DEBIAN_FRONTEND noninteractive
 ENV SCREEN_WIDTH 1920
@@ -15,6 +15,7 @@ ENV WORKDIR "/project"
 ENV RUN ''
 ENV HOME "/home/bdd"
 ENV NVM_DIR "/home/bdd/.nvm"
+
 
 #base
 RUN apt-get update -qqy && apt-get -qqy --no-install-recommends install ca-certificates unzip wget git jq sudo bzip2 mc
@@ -88,8 +89,6 @@ RUN apt-get update -qqy \
     libxrender1 \
     libxss1 \
   && rm -rf /var/lib/apt/lists/*
-
-
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
