@@ -190,6 +190,8 @@ function webpackInitWatcher {
         echo -e "\x1b[5;42;37mip route: $(ip route show)\x1b[0m"
         echo -e "\x1b[5;42;37mip route: $(ip addr)\x1b[0m"
 
+        echo -e '\E[37;44m'"\033[1mVNC WAIT in 10.0.0.1 at port $VNCPORT\033[0m"
+
         sleep 10
 
         if [ -n "$RUN" ]; then

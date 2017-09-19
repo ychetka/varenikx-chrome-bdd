@@ -10,13 +10,47 @@ function killContainer {
   docker kill $containerId
 }
 
+function random_free_tcp_port {
+  local ports="${1:-1}" interim="${2:-2048}" spacing=32
+  local free_ports=( )
+  local taken_ports=( $( netstat -aln | egrep ^tcp | fgrep LISTEN |
+                         awk '{print $4}' | egrep -o '[0-9]+$' |
+                         sort -n | uniq ) )
+  interim=$(( interim + (RANDOM % spacing) ))
+
+  for taken in "${taken_ports[@]}" 65535
+  do
+    while [[ $interim -lt $taken && ${#free_ports[@]} -lt $ports ]]
+    do
+      free_ports+=( $interim )
+      interim=$(( interim + spacing + (RANDOM % spacing) ))
+    done
+    interim=$(( interim > taken + spacing
+                ? interim
+                : taken + spacing + (RANDOM % spacing) ))
+  done
+
+  [[ ${#free_ports[@]} -ge $ports ]] || return 2
+
+  echo "${free_ports[@]}"
+}
+
 cd $HOME
 
 echo -e '\E[37;44m'"\033[1mgit-bdd-runner >> start BDD > TIMEOUT 180 minutes\033[0m"
 
 COMMAND="yarn run test:spec -- --workspace=bdd.corplan.ru --modelId=3c5008d019203fcdfcb9226435580787 --skipMenu --skipTags=blank,bug,modeller"
+FREEPORT=$(random_free_tcp_port)
+PPP_STATE=$(ip link show | grep ppp0)
+HOST_IP="127.0.0.1"
 
-docker run --name "$ID" -e ID="$ID" -e GIT="$1" -e RERUNCOUNT="5" -e FAILEDPARSER="node ./bin/cucumber-failed-parser.js" -e RUN="$COMMAND" -v "$HOME/$ID/":"/$ID" varenikx/chrome-bdd:latest &
+if [ -n "$PPP_STATE" ]; then
+  HOST_IP="10.0.0.1"
+fi
+
+echo "$HOST_IP >> $FREEPORT"
+
+docker run --name "$ID" -p $HOST_IP:$FREEPORT:5900 -e VNCPORT="$FREEPORT" -e ID="$ID" -e GIT="$1" -e RERUNCOUNT="5" -e FAILEDPARSER="node ./bin/cucumber-failed-parser.js" -e RUN="$COMMAND" -v "$HOME/$ID/":"/$ID" varenikx/chrome-bdd:latest &
 
 # 180 minutes
 for i in $(seq 1 180)
