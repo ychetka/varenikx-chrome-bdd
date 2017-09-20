@@ -1,6 +1,25 @@
 #!/bin/bash
 
-ID=$(uuidgen)
+##$1 git data
+##$2 home dir
+##$3 features group
+
+ID=
+AHOME=
+
+if [ -n "$4" ]; then
+   ID=$4
+else
+   ID=$(uuidgen)
+fi
+
+if [ -n "$2" ]; then
+   AHOME=$2
+else
+   AHOME=$HOME
+fi
+
+cd $AHOME
 
 mkdir $ID
 chmod 0777 $ID
@@ -35,11 +54,15 @@ function random_free_tcp_port {
   echo "${free_ports[@]}"
 }
 
-cd $HOME
-
 echo -e '\E[37;44m'"\033[1mgit-bdd-runner >> start BDD > TIMEOUT 180 minutes\033[0m"
 
-COMMAND="yarn run test:spec -- --workspace=bdd.corplan.ru --modelId=3c5008d019203fcdfcb9226435580787 --skipMenu --skipTags=blank,bug,modeller"
+if [ -n "$3" ]; then
+  COMMAND="yarn run test:spec -- --groups=$3 --workspace=bdd.corplan.ru --modelId=3c5008d019203fcdfcb9226435580787 --skipMenu --skipTags=blank,bug,modeller"
+else
+  COMMAND="yarn run test:spec -- --workspace=bdd.corplan.ru --modelId=3c5008d019203fcdfcb9226435580787 --skipMenu --skipTags=blank,bug,modeller"
+fi
+
+
 FREEPORT=$(random_free_tcp_port)
 PPP_STATE=$(ip link show | grep ppp0)
 HOST_IP="127.0.0.1"
@@ -50,7 +73,7 @@ fi
 
 echo "$HOST_IP >> $FREEPORT"
 
-docker run --name "$ID" -p $HOST_IP:$FREEPORT:5900 -e VNCPORT="$FREEPORT" -e ID="$ID" -e GIT="$1" -e RERUNCOUNT="5" -e FAILEDPARSER="node ./bin/cucumber-failed-parser.js" -e RUN="$COMMAND" -v "$HOME/$ID/":"/$ID" varenikx/chrome-bdd:latest &
+docker run --name "$ID" -p $HOST_IP:$FREEPORT:5900 -e VNCPORT="$FREEPORT" -e ID="$ID" -e GIT="$1" -e RERUNCOUNT="5" -e FAILEDPARSER="node ./bin/cucumber-failed-parser.js" -e RUN="$COMMAND" -v "$AHOME/$ID/":"/$ID" varenikx/chrome-bdd:latest &
 
 # 180 minutes
 for i in $(seq 1 180)
@@ -58,7 +81,7 @@ for i in $(seq 1 180)
     #slep
     sleep 60
 
-    if [ -f "$HOME/$ID/1" ]; then
+    if [ -f "$AHOME/$ID/1" ]; then
       # failed
       # for jenkins failed
       killContainer
@@ -66,7 +89,7 @@ for i in $(seq 1 180)
       exit 1
     fi
 
-    if [ -f "$HOME/$ID/0" ]; then
+    if [ -f "$AHOME/$ID/0" ]; then
       # ok
       killContainer
       sleep 10
