@@ -2,31 +2,14 @@
 
 ##$1 git data
 ##$2 home dir
-##$3 features group
-
-ID=
-AHOME=
-
-if [ -n "$4" ]; then
-   ID=$4
-else
-   ID=$(uuidgen)
-fi
-
-if [ -n "$2" ]; then
-   AHOME=$2
-else
-   AHOME=$HOME
-fi
-
-cd $AHOME
-
-mkdir $ID
-chmod 0777 $ID
+##$3 features group - support tag and group
+##$4 id
+##$5 host for mapping
+##$6 port for mapping
 
 function killContainer {
   containerId=$(docker ps -aqf "name=$ID")
-  docker kill $containerId
+  docker kill $containerId & > /dev/null
 }
 
 function random_free_tcp_port {
@@ -54,24 +37,55 @@ function random_free_tcp_port {
   echo "${free_ports[@]}"
 }
 
+ID=
+AHOME=
+HOST_IP=
+FREEPORT=
+
+if [ -n "$6" ]; then
+  FREEPORT=$6
+else
+  FREEPORT=$(random_free_tcp_port)
+fi
+
+if [ -n "$5" ]; then
+  HOST_IP=$5
+else
+  PPP_STATE=$(ip link show | grep ppp0)
+  if [ -n "$PPP_STATE" ]; then
+    HOST_IP="10.0.0.1"
+  else
+    HOST_IP="127.0.0.1"
+  fi
+fi
+
+if [ -n "$4" ]; then
+   ID=$4
+else
+   ID=$(uuidgen)
+fi
+
+if [ -n "$2" ]; then
+   AHOME=$2
+else
+   AHOME=$HOME
+fi
+
+cd $AHOME
+
+mkdir $ID
+chmod 0777 $ID
+
 echo -e '\E[37;44m'"\033[1mgit-bdd-runner >> start BDD > TIMEOUT 180 minutes\033[0m"
 
 if [ -n "$3" ]; then
-  COMMAND="yarn run test:spec -- --groups=$3 --workspace=bdd.corplan.ru --modelId=3c5008d019203fcdfcb9226435580787 --skipMenu --skipTags=blank,bug,modeller"
+  SETTING=$(echo "$3"| cut -d':' -f 1)
+  VALUE=$(echo "$3"| cut -d':' -f 2)
+
+  COMMAND="yarn run test:spec -- --$SETTING=$VALUE --workspace=bdd.corplan.ru --modelId=3c5008d019203fcdfcb9226435580787 --skipMenu"
 else
   COMMAND="yarn run test:spec -- --workspace=bdd.corplan.ru --modelId=3c5008d019203fcdfcb9226435580787 --skipMenu --skipTags=blank,bug,modeller"
 fi
-
-
-FREEPORT=$(random_free_tcp_port)
-PPP_STATE=$(ip link show | grep ppp0)
-HOST_IP="127.0.0.1"
-
-if [ -n "$PPP_STATE" ]; then
-  HOST_IP="10.0.0.1"
-fi
-
-echo "$HOST_IP >> $FREEPORT"
 
 docker run --name "$ID" -p $HOST_IP:$FREEPORT:5900 -e VNCPORT="$FREEPORT" -e ID="$ID" -e GIT="$1" -e RERUNCOUNT="5" -e FAILEDPARSER="node ./bin/cucumber-failed-parser.js" -e RUN="$COMMAND" -v "$AHOME/$ID/":"/$ID" varenikx/chrome-bdd:latest &
 
