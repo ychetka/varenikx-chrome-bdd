@@ -10,7 +10,7 @@ ENV SCREEN_HEIGHT 1080
 ENV SCREEN_DEPTH 24
 ENV DISPLAY :0
 ENV NVM_VERSION v0.33.2
-ENV NODE_VERSION v7.10.0
+ENV NODE_VERSION v7.10.1
 ENV WORKDIR "/project"
 ENV RUN ''
 ENV HOME "/home/bdd"
@@ -18,7 +18,7 @@ ENV NVM_DIR "/home/bdd/.nvm"
 
 
 #base
-RUN apt-get update -qqy && apt-get -qqy --no-install-recommends install ca-certificates unzip wget git jq sudo bzip2 mc
+RUN apt-get update -qqy && apt-get -qqy --no-install-recommends install apt-utils ca-certificates unzip wget git jq sudo bzip2 mc
 
 #user
 RUN sudo useradd bdd --shell /bin/bash --create-home && sudo usermod -a -G sudo bdd && echo 'ALL ALL = (ALL) NOPASSWD: ALL' >> /etc/sudoers && echo 'bdd:bdd' | chpasswd
