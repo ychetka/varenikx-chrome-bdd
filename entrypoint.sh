@@ -1,24 +1,24 @@
 #!/bin/bash
 
 function initGit {
-  echo -e "\x1b[5;42;37mGit mode\x1b[0m"
+  echo -e "\x1b[5;42;37m>>ENTRYPOINT >> GIT MODE \x1b[0m"
 
   export REPOSITORY=$(echo ${GIT} | jq -r '.repository')
   export AUTH_TOKEN=$(echo ${GIT} | jq -r '.token')
   export PULL_REQUEST_Id=$(echo ${GIT} | jq -r '.pullRequestId')
   export BRANCH=$(echo ${GIT} | jq -r '.branch')
 
-  echo -e '\E[37;44m'"\033[1mREPOSITORY: $REPOSITORY\033[0m"
-  echo -e '\E[37;44m'"\033[1mAUTH_TOKEN: $AUTH_TOKEN\033[0m"
-  echo -e '\E[37;44m'"\033[1mPULL_REQUEST_Id: $PULL_REQUEST_Id\033[0m"
-  echo -e '\E[37;44m'"\033[1mBRANCH: $BRANCH\033[0m"
+  echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> REPOSITORY: $REPOSITORY\033[0m"
+  echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> AUTH_TOKEN: $AUTH_TOKEN\033[0m"
+  echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> PULL_REQUEST_Id: $PULL_REQUEST_Id\033[0m"
+  echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> BRANCH: $BRANCH\033[0m"
 
-  echo -e "\x1b[37;43mWaiting git...\x1b[0m"
+  echo -e "\x1b[37;43m>>ENTRYPOINT >> WAITING GIT...\x1b[0m"
   git init
-  echo -e "\x1b[37;43mClone https://$AUTH_TOKEN@github.com/$REPOSITORY.git\x1b[0m"
+  echo -e "\x1b[37;43m>>ENTRYPOINT >> CLONE https://$AUTH_TOKEN@github.com/$REPOSITORY.git\x1b[0m"
 
   git clone https://$AUTH_TOKEN@github.com/$REPOSITORY.git ./project
-  echo -e "\x1b[37;43mGet pr...\x1b[0m"
+  echo -e "\x1b[37;43m>>ENTRYPOINT >> LOAD PULL REQUEST...\x1b[0m"
 
   cd $WORKDIR
 
@@ -27,7 +27,7 @@ function initGit {
 }
 
 function initFiles {
-  echo -e "\x1b[5;42;37mFile mode\x1b[0m"
+  echo -e "\x1b[5;42;37m>>ENTRYPOINT >> FILE MODE\x1b[0m"
   sudo -E -i -u root \
     cp -avr /project "/home/bdd/project" >  /dev/null
 }
@@ -66,18 +66,18 @@ fi
 
 
 #red message
-export ERRORMESSAGE="\x1b[5;41;37mFatal Error\x1b[0m"
-export TIMEOUTMESSAGE="\x1b[5;41;37mFatal Error! Timeout!\x1b[0m"
+export ERRORMESSAGE="\x1b[5;41;37m>>ENTRYPOINT >> FATAL ERROR\x1b[0m"
+export TIMEOUTMESSAGE="\x1b[5;41;37m>>ENTRYPOINT >> FATAL ERROR! TIMEOUT!\x1b[0m"
 
 #clear
 if [ -f "$WORKDIR/init.failed" ]; then
-  rm $WORKDIR/init.failed
+  rm -rf $WORKDIR/init.failed
 fi
 if [ -f "$WORKDIR/init.started" ]; then
-  rm $WORKDIR/init.started
+  rm -rf $WORKDIR/init.started
 fi
 if [ -f "$WEBPACKLOG" ]; then
-  rm "$WEBPACKLOG"
+  rm -rf "$WEBPACKLOG"
 fi
 
 # $1 filename
@@ -107,11 +107,11 @@ function initXvfb {
     do
       xdpyinfo -display $DISPLAY >/dev/null 2>&1
         if [ $? -eq 0 ]; then
-          echo -e "\x1b[5;42;37m x-virtual frame buffer started\x1b[0m"
+          echo -e "\x1b[5;42;37m>>ENTRYPOINT >> X-VIRTUAL STARTED\x1b[0m"
           break
         fi
-      echo -e "\x1b[37;43mWaiting xvfb...\x1b[0m"
-      sleep 0.5
+      echo -e "\x1b[37;43m>>ENTRYPOINT >> WAITING XVFB...\x1b[0m"
+      sleep 1
   done
 
   fluxbox -display $DISPLAY &
@@ -119,12 +119,12 @@ function initXvfb {
 }
 
 function info {
-  echo -e "\x1b[37;43mSystem\x1b[0m"
+  echo -e "\x1b[37;43m>>ENTRYPOINT >> SYSTEM\x1b[0m"
   echo $(lsb_release -a)
-  echo -e "\x1b[37;43mnode version\x1b[0m $(node -v)"
-  echo -e "\x1b[37;43mnpm version\x1b[0m $(npm -v)"
-  echo -e "\x1b[37;43myarn version\x1b[0m $(yarn --version)"
-  echo -e "$(java -version)"
+  echo -e "\x1b[37;43m>>ENTRYPOINT >> NODE VERSION $(node -v)\x1b[0m"
+  echo -e "\x1b[37;43m>>ENTRYPOINT >> NPM VERSION $(npm -v)\x1b[0m"
+  echo -e "\x1b[37;43m>>ENTRYPOINT >> YARN VERSION $(yarn --version)\x1b[0m"
+  echo -e "\x1b[37;43m>>ENTRYPOINT >> $(java -version)\x1b[0m"
 }
 
 
@@ -134,6 +134,10 @@ function _yarnWatcher {
 for i in $(seq 1 100)
 do
   WEBPACK=$(tail -1 $WEBPACKLOG | grep 'Compiled successfully')
+  echo $WEBPACK
+  echo $WEBPACKLOG
+  cat $WEBPACKLOG
+
     if [ -n "$WEBPACK" ]; then
       ## this finished away_init
       setState "init.started"
@@ -141,7 +145,8 @@ do
     else
       WEBPACK=$(tail -1 $WEBPACKLOG | grep 'Failed')
       if [ -n "$WEBPACK" ]; then
-        echo -e "\x1b[5;41;37mFailed yarn\x1b[0m"
+        echo -e "\x1b[5;41;37m>>ENTRYPOINT >> FAILED TO COMPILE PROJECT\x1b[0m"
+        cat $WEBPACK
         setState "init.failed"
         break
       fi
@@ -150,7 +155,7 @@ do
   sleep 5
 
   if (( $i == 99 )); then
-    echo -e "\x1b[5;41;37mFailed yarn TIMEOUT\x1b[0m"
+    echo -e "\x1b[5;41;37m>>ENTRYPOINT >> FAILED YARN TIMEOUT\x1b[0m"
     setState "init.failed"
     break
   fi
@@ -169,7 +174,7 @@ function initYarn {
 function webpackInitWatcher {
   for i in $(seq 1 100)
     do
-      echo -e "\x1b[37;43mWaiting init webpack...\x1b[0m"
+      echo -e "\x1b[37;43m>>ENTRYPOINT >> WAITING INIT WEBPACK...\x1b[0m"
       sleep 5
 
       if [ -f "$WORKDIR/init.failed" ]; then
@@ -178,27 +183,45 @@ function webpackInitWatcher {
       fi
 
       if [ -f "$WORKDIR/init.started" ]; then
-        echo -e "\x1b[5;42;37mWORKDIR: $WORKDIR\x1b[0m"
-        echo -e "\x1b[5;42;37mXDPY: OK\x1b[0m"
-        echo -e "\x1b[5;42;37mYARN: OK\x1b[0m"
-        echo -e "\x1b[5;42;37mWEBPACK: OK\x1b[0m"
-        echo -e "\x1b[5;42;37mgoogle-chrome-stable: $(apt-cache show google-chrome-stable | grep -i version)\x1b[0m"
+        echo -e "\x1b[5;42;37m>>ENTRYPOINT >> WORKDIR: $WORKDIR\x1b[0m"
+        echo -e "\x1b[5;42;37m>>ENTRYPOINT >> XDPY: OK\x1b[0m"
+        echo -e "\x1b[5;42;37m>>ENTRYPOINT >> YARN: OK\x1b[0m"
+        echo -e "\x1b[5;42;37m>>ENTRYPOINT >> WEBPACK: OK\x1b[0m"
+        echo -e "\x1b[5;42;37m>>ENTRYPOINT >> GOOGLE-CHROME-STABLE: $(apt-cache show google-chrome-stable | grep -i version)\x1b[0m"
 
-        echo -e '\E[37;44m'"\033[1mGEOMETRY: $GEOMETRY\033[0m"
-        echo -e "\x1b[5;42;37mYou must connect with VNC client\x1b[0m"
-        echo -e "\x1b[5;42;37mNetwork information\x1b[0m"
-        echo -e "\x1b[5;42;37mip route: $(ip route show)\x1b[0m"
-        echo -e "\x1b[5;42;37mip route: $(ip addr)\x1b[0m"
+        echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> GEOMETRY: $GEOMETRY\033[0m"
+        echo -e "\x1b[5;42;37m>>ENTRYPOINT >> You must connect with VNC client\x1b[0m"
+        echo -e "\x1b[5;42;37m>>ENTRYPOINT >> Network information\x1b[0m"
+        echo -e "\x1b[5;42;37m>>ENTRYPOINT >> ip route: $(ip route show)\x1b[0m"
+        echo -e "\x1b[5;42;37m>>ENTRYPOINT >> ip route: $(ip addr)\x1b[0m"
 
-        echo -e '\E[37;44m'"\033[1mVNC WAIT in 10.0.0.1 at port $VNCPORT\033[0m"
+        echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> VNC WAIT in 10.0.0.1 at port $VNCPORT\033[0m"
 
         sleep 10
 
+        if [ -f "/$ID/@rerun.txt" ]; then
+          mkdir "$WORKDIR/reports/"
+          cp "/$ID/@rerun.txt" "$WORKDIR/reports/@rerun.txt"
+          rm -rf "/$ID/@rerun.txt"
+
+          echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> EXTRENAL RERUN WILL BE USE FOR FIRST!\033[0m"
+          echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> $(cat $WORKDIR/reports/@rerun.txt)\033[0m"
+        fi
+
         if [ -n "$RUN" ]; then
-          echo -e '\E[37;44m'"\033[1mRUN: $RUN\033[0m"
-          /bin/bash -c 'cd $WORKDIR && $RUN'
+          if [ -f "$WORKDIR/reports/@rerun.txt" ]; then
+            let RERUNCOUNT=$RERUNCOUNT-1
+
+            echo -e "\x1b[5;41;37m>>ENTRYPOINT >> RERUN. Attempt number 0\x1b[0m"
+            echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> RUN: $RUN --rerun\033[0m"
+            /bin/bash -c 'cd $WORKDIR && $RUN --rerun'
+            else
+             echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> RUN MODE: $RUN\033[0m"
+             /bin/bash -c 'cd $WORKDIR && $RUN'
+          fi
 
           isFailed=$(/bin/bash -c "$FAILEDPARSER");
+          LOCKRERUN=0
 
           if [ -n "$RERUNCOUNT" ]; then
 
@@ -208,9 +231,32 @@ function webpackInitWatcher {
                   isFailed=$(/bin/bash -c "$FAILEDPARSER");
 
                   if [ "$isFailed" = "true" ]; then
-                    echo -e "\x1b[5;41;37mBDD RERUN. Attempt number $i\x1b[0m"
-                    echo -e '\E[37;44m'"\033[1mRUN: $RUN --rerun\033[0m"
-                    /bin/bash -c 'cd $WORKDIR && $RUN --rerun'
+                    echo -e "\x1b[5;41;37m>>ENTRYPOINT >> RERUN. Attempt number $i\x1b[0m"
+                    echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >>RUN: $RUN --rerun\033[0m"
+
+                    ##пустой реран, но есть ошибки - берем предведущий
+                    if [ -z "$(cat $WORKDIR/reports/@rerun.txt)" ]; then
+                      if [ -f "$WORKDIR/reports/@rerun.txt.bak" ]; then
+                        echo -e "\x1b[5;41;37m>>ENTRYPOINT >> RERUN FAILED! USE LAST RERUN. $WORKDIR/reports/@rerun.txt.bak \x1b[0m"
+                        cp "$WORKDIR/reports/@rerun.txt.bak" "$WORKDIR/reports/@rerun.txt"
+                      else
+                        LOCKRERUN=1
+                        echo -e "\x1b[5;41;37m>>ENTRYPOINT >> RERUN FAILED! LAST RERUN FAILED!. LOCKRERUN!!! \x1b[0m"
+                      fi
+                    fi
+
+                    ##валидный реран, есть ошибки, делаем копию
+                    if [ -n "$(cat $WORKDIR/reports/@rerun.txt)" ]; then
+                      echo -e "\x1b[5;41;37m>>ENTRYPOINT >> BACKUP RERUN FILE >> $WORKDIR/reports/@rerun.txt.bak \x1b[0m"
+                      cp "$WORKDIR/reports/@rerun.txt" "$WORKDIR/reports/@rerun.txt.bak"
+                    fi
+
+                    if (( $LOCKRERUN == 0 )); then
+                      /bin/bash -c 'cd $WORKDIR && $RUN --rerun'
+                    else
+                      echo -e "\x1b[5;41;37m>>ENTRYPOINT >> RERUN FAILED! LAST RERUN IS EMPTY! HAS FAILED FEATURES! \x1b[0m"
+                      break
+                    fi
                   else
                     break
                   fi
@@ -222,10 +268,16 @@ function webpackInitWatcher {
 
           #FIXME система статистики
           if [ "$isFailed" = "true" ]; then
-            echo -e "\x1b[5;41;37mBDD: FAILED\x1b[0m"
+            echo -e "\x1b[5;41;37m>>ENTRYPOINT >> BDD: FAILED. HAS FAILED FEATURES\x1b[0m"
+            if [ -n "$(cat $WORKDIR/reports/@rerun.txt)" ]; then
+              cp "$WORKDIR/reports/@rerun.txt" "/$ID/@rerun.txt"
+              echo -e "\x1b[5;41;37m>>ENTRYPOINT >> OUTPUT RERUN AT /$ID/@rerun.txt \x1b[0m"
+              echo -e "\x1b[5;41;37m>>ENTRYPOINT >> FAILED FEATURES: \x1b[0m"
+              echo -e  "$(cat /$ID/@rerun.txt)"
+            fi
             shutdown 1
             else
-            echo -e '\E[37;44m'"\033[1mBDD: ENDED!\033[0m"
+            echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> BDD: ENDED!\033[0m"
             shutdown 0
           fi
         fi
@@ -249,7 +301,7 @@ if [ -f "$WORKDIR/package.json" ]; then
   initYarn
   webpackInitWatcher
 else
-    echo -e "\x1b[5;41;37mFailed 1\x1b[0m"
+    echo -e "\x1b[5;41;37m>>ENTRYPOINT >> FAILED package.json IS EMPTY OR NOT AVAILABILITY\x1b[0m"
     shutdown 1
 fi
 
