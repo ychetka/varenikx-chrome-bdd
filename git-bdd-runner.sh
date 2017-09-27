@@ -6,6 +6,7 @@
 ##$4 id
 ##$5 host for mapping
 ##$6 port for mapping
+##$7 cpu
 
 function killContainer {
   containerId=$(docker ps -aqf "name=$ID")
@@ -41,6 +42,14 @@ ID=
 AHOME=
 HOST_IP=
 FREEPORT=
+CPU=
+
+if [ -n "$7" ]; then
+  CPU=$7
+else
+  let last=$(nproc)-1
+  CPU="0-$last"
+fi
 
 if [ -n "$6" ]; then
   FREEPORT=$6
@@ -76,18 +85,26 @@ cd $AHOME
 mkdir $ID
 chmod 0777 $ID
 
-echo -e '\E[37;44m'"\033[1mgit-bdd-runner >> start BDD > TIMEOUT 180 minutes\033[0m"
+
+
+if [ -f "$AHOME/$ID/@rerun.txt" ]; then
+   echo -e '\E[37;44m'"\033[1m>>>THEARD >> RERUN MODE >> TIMEOUT 180 minutes\033[0m"
+else
+   echo -e '\E[37;44m'"\033[1m>>>THEARD >> RUN MODE >> TIMEOUT 180 minutes\033[0m"
+fi
 
 if [ -n "$3" ]; then
   SETTING=$(echo "$3"| cut -d':' -f 1)
   VALUE=$(echo "$3"| cut -d':' -f 2)
+
+  #$SETTING=$VALUE example: filter=foo, tags=bar, skipMenu=baz
 
   COMMAND="yarn run test:spec -- --$SETTING=$VALUE --workspace=bdd.corplan.ru --modelId=3c5008d019203fcdfcb9226435580787 --skipMenu"
 else
   COMMAND="yarn run test:spec -- --workspace=bdd.corplan.ru --modelId=3c5008d019203fcdfcb9226435580787 --skipMenu --skipTags=blank,bug,modeller"
 fi
 
-docker run --name "$ID" -p $HOST_IP:$FREEPORT:5900 -e VNCPORT="$FREEPORT" -e ID="$ID" -e GIT="$1" -e RERUNCOUNT="5" -e FAILEDPARSER="node ./bin/cucumber-failed-parser.js" -e RUN="$COMMAND" -v "$AHOME/$ID/":"/$ID" varenikx/chrome-bdd:latest &
+docker run --cpuset-cpus="$CPU" --name "$ID" -p $HOST_IP:$FREEPORT:5900 -e VNCPORT="$FREEPORT" -e ID="$ID" -e GIT="$1" -e RERUNCOUNT="5" -e FAILEDPARSER="node ./bin/cucumber-failed-parser.js" -e RUN="$COMMAND" -v "$AHOME/$ID/":"/$ID" varenikx/chrome-bdd:latest &
 
 # 180 minutes
 for i in $(seq 1 180)
@@ -110,10 +127,10 @@ for i in $(seq 1 180)
       exit 0
     fi
 
-    if (( $i == 179 )); then
+    if (( $i == 175 )); then
       killContainer
       sleep 10
-      echo -e "\x1b[5;41;37mgit-bdd-runner >> Failed TIMEOUT\x1b[0m"
+      echo -e "\x1b[5;41;37m>>>THEARD FAILED TIMEOUT \x1b[0m"
       exit 1
     fi
 done

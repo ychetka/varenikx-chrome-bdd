@@ -27,10 +27,11 @@ THEARD_LOGS=( )
 THEARD_STATES=( )
 THEARD_HOSTS=( )
 THEARD_PORTS=( )
+THEARD_CPUS=( "0-1" "2-3" "4-5" "6-7" "8-9" "10-11" "11-12" "13-14" )
 THEARD_RERUNS=( )
 
 function killAllTheards {
-  echo -e "\x1b[5;41;37m STOP ALL THEARDS \x1b[0m"
+  echo -e "\x1b[5;41;37m>>>>>>>>>>STOP ALL THEARDS \x1b[0m"
   docker kill $(docker ps -q) & > /dev/null
 }
 
@@ -67,7 +68,6 @@ function random_free_tcp_port {
 
 #$1 index $2 state (0 | 1)
 function changeTheardState {
-  echo "change theard ${THEARD_GROUPS[$1]} to $2"
   THEARD_STATES[$1]=$2
 }
 
@@ -94,25 +94,25 @@ function getTheardResult {
 function printAllState {
   for index in "${!THEARD_DIRS[@]}";
     do
-      if ((${THEARD_STATES[$index]} == 1)); then
-        echo -e "\x1b[5;41;37m >> THEARD  $index  ${THEARD_GROUPS[$index]}  FAILED \x1b[0m"
+      if (( "${THEARD_STATES[$index]}" == "1" )); then
+        echo -e "\x1b[5;41;37m>>>>>>>>>>THEARD  $index  ${THEARD_GROUPS[$index]}  FAILED \x1b[0m"
       fi
 
-      if ((${THEARD_STATES[$index]} == 0)); then
-        echo -e "\x1b[5;42;37m >> THEARD  $index  ${THEARD_GROUPS[$index]}  OK \x1b[0m"
+      if (( "${THEARD_STATES[$index]}" == "0" )); then
+        echo -e "\x1b[5;42;37m>>>>>>>>>>THEARD  $index  ${THEARD_GROUPS[$index]}  OK \x1b[0m"
       fi
 
-      if ((${THEARD_STATES[$index]} == 2)); then
-        echo -e "\x1b[37;43m >> THEARD  $index  ${THEARD_GROUPS[$index]}  IN PROGRESS \x1b[0m"
+      if (( "${THEARD_STATES[$index]}" == "2" )); then
+        echo -e "\x1b[37;43m>>>>>>>>>>THEARD  $index  ${THEARD_GROUPS[$index]}  IN PROGRESS \x1b[0m"
       fi
   done
 
   if [ -z "$1" ]; then
     for index in "${!THEARD_DIRS[@]}";
       do
-        if ((${THEARD_STATES[$index]} == 1)); then
+        if (( "${THEARD_STATES[$index]}" == "1" )); then
           echo -e "\x1b[5;41;37m#####################################################\x1b[0m"
-          echo -e "\x1b[5;41;37m >> THEARD FAILED $index  ${THEARD_GROUPS[$index]}   \x1b[0m"
+          echo -e "\x1b[5;41;37m>>>>>>>>>>THEARD FAILED $index  ${THEARD_GROUPS[$index]}   \x1b[0m"
           echo -e "\x1b[5;41;37m#####################################################\x1b[0m"
         fi
 
@@ -124,9 +124,9 @@ function printAllState {
 function printFailedState {
   for index in "${!THEARD_DIRS[@]}";
     do
-      if ((${THEARD_STATES[$index]} == 1)); then
+      if (( "${THEARD_STATES[$index]}" == "1" )); then
         echo -e "\x1b[5;41;37m#####################################################\x1b[0m"
-        echo -e "\x1b[5;41;37m >> THEARD FAILED $index  ${THEARD_GROUPS[$index]}   \x1b[0m"
+        echo -e "\x1b[5;41;37m>>>>>>>>>>THEARD FAILED $index  ${THEARD_GROUPS[$index]}   \x1b[0m"
         echo -e "\x1b[5;41;37m#####################################################\x1b[0m"
       fi
 
@@ -136,18 +136,22 @@ function printFailedState {
 
 #$1 thead index
 function rerunFailedTheards {
-  echo -e '\E[37;44m'"\033[1m###########################################################\033[0m"
-  echo -e '\E[37;44m'"\033[1m >> RERUN FAILED THEARD $1 >> ${THEARD_GROUPS[$1]} \033[0m"
-  echo -e '\E[37;44m'"\033[1m###########################################################\033[0m"
-
-  rm -f "${THEARD_LOGS[$1]}"
-  rm -f "${THEARD_DIRS[$1]}"
-
   THEARD_ID=$(uuidgen)
   THEARD_DIR=$HOME/$ROOTID/$THEARD_ID
   THEARD_STATE=2
   THEARD_HOST="127.0.0.1"
   THEARD_PORT=$(random_free_tcp_port)
+
+  mkdir $THEARD_DIR
+
+  if [ -f "${THEARD_DIRS[$1]}/@rerun.txt" ]; then
+    echo -e '\E[37;44m'"\033[1m>>>>>>>>>>USE EXTERNAL RERUN ${THEARD_DIRS[$1]}/@rerun.txt FOR ${THEARD_GROUPS[$1]} \033[0m"
+    cp "${THEARD_DIRS[$1]}/@rerun.txt" "$THEARD_DIR/@rerun.txt"
+    rm -rf "${THEARD_DIRS[$1]}/@rerun.txt"
+  fi
+
+  #REMOVE OLD THEARD DIRECTORY
+  rm -rf "${THEARD_DIRS[$1]}"
 
   PPP_STATE=$(ip link show | grep ppp0)
 
@@ -161,10 +165,8 @@ function rerunFailedTheards {
   THEARD_HOSTS[$1]=$THEARD_HOST
   THEARD_PORTS[$1]=$THEARD_PORT
 
-
-  ~/git-bdd-runner.sh $GIT $HOME/$ROOTID ${THEARD_GROUPS[$1]} ${THEARD_IDS[$1]} ${THEARD_HOSTS[$1]} ${THEARD_PORTS[$1]}> ${THEARD_LOGS[$1]} &
+  ~/git-bdd-runner.sh $GIT $HOME/$ROOTID ${THEARD_GROUPS[$1]} ${THEARD_IDS[$1]} ${THEARD_HOSTS[$1]} ${THEARD_PORTS[$1]} ${THEARD_CPUS[$1]}> ${THEARD_LOGS[$1]} &
   sleep 10
-
 }
 
 
@@ -174,8 +176,8 @@ cd $HOME
 mkdir $ROOTID
 chmod 0777 $ROOTID
 
-echo -e '\E[37;44m'"\033[1m PARALLEL-GIR-BDD-RUNNER >> BDD TIMEOUT 180 minutes \033[0m"
-echo -e '\E[37;44m'"\033[1m $THEARDS_COUNT theards \033[0m"
+echo -e '\E[37;44m'"\033[1m>>>>>>>>>>$THEARDS_COUNT THEARDS WITH TIMEOUT 180 minutes \033[0m"
+
 
 for i in $(seq 0 $LAST_THEARD_INDEX)
   do
@@ -193,18 +195,19 @@ for i in $(seq 0 $LAST_THEARD_INDEX)
       THEARD_HOST="10.0.0.1"
     fi
 
-    THEARD_IDS=( "${THEARD_IDS[@]}" "$THEARD_ID")
-    THEARD_DIRS=( "${THEARD_DIRS[@]}" "$THEARD_DIR")
-    THEARD_LOGS=( "${THEARD_LOGS[@]}" "$THEARD_LOG")
-    THEARD_GROUPS=( "${THEARD_GROUPS[@]}" "$THEARD_GROUP")
-    THEARD_STATES=( "${THEARD_STATES[@]}" "$THEARD_STATE")
-    THEARD_HOSTS=( "${THEARD_HOSTS[@]}" "$THEARD_HOST")
-    THEARD_PORTS=( "${THEARD_PORTS[@]}" "$THEARD_PORT")
-    THEARD_RERUNS==( "${THEARD_RERUNS[@]}" "THEARD_RERUN")
+    THEARD_IDS=( "${THEARD_IDS[@]}" "$THEARD_ID" )
+    THEARD_DIRS=( "${THEARD_DIRS[@]}" "$THEARD_DIR" )
+    THEARD_LOGS=( "${THEARD_LOGS[@]}" "$THEARD_LOG" )
+    THEARD_GROUPS=( "${THEARD_GROUPS[@]}" "$THEARD_GROUP" )
+    THEARD_STATES=( "${THEARD_STATES[@]}" "$THEARD_STATE" )
+    THEARD_HOSTS=( "${THEARD_HOSTS[@]}" "$THEARD_HOST" )
+    THEARD_PORTS=( "${THEARD_PORTS[@]}" "$THEARD_PORT" )
+
+    THEARD_RERUNS=( "${THEARD_RERUNS[@]}" "$THEARD_RERUN" )
 
 
     #run bdd theard
-    ~/git-bdd-runner.sh $GIT $HOME/$ROOTID $THEARD_GROUP $THEARD_ID $THEARD_HOST $THEARD_PORT> $THEARD_LOG &
+    ~/git-bdd-runner.sh $GIT $HOME/$ROOTID $THEARD_GROUP $THEARD_ID $THEARD_HOST $THEARD_PORT ${THEARD_CPUS[$i]} > $THEARD_LOG &
     sleep 10
 done
 
@@ -223,19 +226,31 @@ for i in $(seq 1 180)
     #rerun theard
     for index in "${!THEARD_STATES[@]}";
       do
-        if [ "${THEARD_STATES[$index]}" -eq "1" ]; then
-           echo "Find failed to ${THEARD_STATES[$index]}"
-           if [ "${THEARD_RERUNS[$index]}" -ne "0" ]; then
+        if (( "${THEARD_STATES[$index]}" == "1" )); then
+
+           if (( "${THEARD_RERUNS[$index]}" >= "0" )); then
+             echo -e '\E[37;44m'"\033[1m###########################################################\033[0m"
+             echo -e '\E[37;44m'"\033[1m>>>>>>>>>>RERUN(${THEARD_RERUNS[$index]}) FAILED THEARD $index >> ${THEARD_GROUPS[$index]} \033[0m"
+             echo -e '\E[37;44m'"\033[1m###########################################################\033[0m"
+
              let THEARD_RERUNS[$index]=${THEARD_RERUNS[$index]}-1
              rerunFailedTheards $index
+
            else
              echo -e "\x1b[5;41;37m###########################################################\x1b[0m"
-             echo -e "\x1b[5;41;37m >> THEARD RERUN IS EMPTY! \x1b[0m"
+             echo -e "\x1b[5;41;37m>>>>>>>>>>ATTEMPT THEARD RERUNS IN ${THEARD_GROUPS[$index]} IS EMPTY! \x1b[0m"
              echo -e "\x1b[5;41;37m###########################################################\x1b[0m"
+
              killAllTheards
              printFailedState
+
+             echo -e "\x1b[5;41;37m###########################################################\x1b[0m"
+             echo -e "\x1b[5;41;37m>>>>>>>>>>BDD FAILED !!! \x1b[0m"
+             echo -e "\x1b[5;41;37m###########################################################\x1b[0m"
+
              exit 1
            fi
+
         fi
     done
   fi
@@ -243,7 +258,7 @@ for i in $(seq 1 180)
   #exist in progress
   if [ -z "$(echo ${THEARD_STATES[*]} | grep '2')" ]; then
       #all theards ok
-      echo -e "\x1b[5;42;37m >> ALL THEARDS END  BDD OK\x1b[0m"
+      echo -e "\x1b[5;42;37m>>>>>>>>>>ALL THEARDS END  BDD OK\x1b[0m"
       #FIXME print all state
       printAllState "withoutLogs"
       killAllTheards
@@ -253,33 +268,34 @@ for i in $(seq 1 180)
   #get result for all container
   for index in "${!THEARD_DIRS[@]}";
     do
-      if ((${THEARD_STATES[$index]} == 2)); then
+      if (( "${THEARD_STATES[$index]}" == "2" )); then
         #exist
         result=$(getTheardResult $index)
 
-        if (($result == 0)); then
+        if (( "$result" == "0" )); then
          # theard ok
-         echo -e "\x1b[5;42;37m >> THEARD  $index  ${THEARD_GROUPS[$index]} BDD OK\x1b[0m"
+         echo -e "\x1b[5;42;37m>>>>>>>>>>THEARD  $index  ${THEARD_GROUPS[$index]} BDD OK\x1b[0m"
          changeTheardState $index 0
          killTheard ${THEARD_IDS[$index]}
         else
-          if (($result == 1)); then
+          if (( "$result" == "1" )); then
             # theard failed
-            echo -e "\x1b[5;41;37m >> THEARD  $index  ${THEARD_GROUPS[$index]} BDD FAILED \x1b[0m"
+            echo -e "\x1b[5;41;37m>>>>>>>>>>THEARD  $index  ${THEARD_GROUPS[$index]} BDD FAILED \x1b[0m"
             changeTheardState $index 1
             killTheard ${THEARD_IDS[$index]}
           else
             # theard in progress
-            echo -e "\x1b[37;43m >> THEARD  $index  ${THEARD_GROUPS[$index]} in progress... \x1b[0m"
+            echo -e "\x1b[37;43m>>>>>>>>>>THEARD  $index  ${THEARD_GROUPS[$index]} in progress... \x1b[0m"
           fi
         fi
       fi
   done
 
-  if (( $i == 178 )); then
+  if (( "$i" == "178" )); then
     echo -e "\x1b[5;41;37m###########################################################\x1b[0m"
-    echo -e "\x1b[5;41;37m >> FAILED TIMEOUT\x1b[0m"
+    echo -e "\x1b[5;41;37m>>>>>>>>>>BDD FAILED TIMEOUT\x1b[0m"
     echo -e "\x1b[5;41;37m###########################################################\x1b[0m"
+
     ##print all state
     printFailedState
     killAllTheards
