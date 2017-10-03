@@ -31,14 +31,17 @@ THEARD_CPUS=( "0-1" "2-3" "4-5" "6-7" "8-9" "10-11" "11-12" "13-14" )
 THEARD_RERUNS=( )
 
 function killAllTheards {
-  echo -e "\x1b[5;41;37m>>>>>>>>>>STOP ALL THEARDS \x1b[0m"
-  docker kill $(docker ps -q) & > /dev/null
+  if [ -z "$1" ]; then
+    echo -e "\x1b[5;41;37m>>>>>>>>>>STOP ALL THEARDS \x1b[0m"
+  fi
+
+  docker kill $(docker ps -q) &> /dev/null
 }
 
 #$1 container name
 function killTheard {
   containerId=$(docker ps -aqf "name=$1")
-  docker kill $containerId & > /dev/null
+  docker kill $containerId &> /dev/null
 }
 
 function random_free_tcp_port {
@@ -176,6 +179,7 @@ cd $HOME
 mkdir $ROOTID
 chmod 0777 $ROOTID
 
+echo -e '\E[37;44m'"\033[1m>>>>>>>>>> <br> BUILD ID  $ROOTID <br> \033[0m"
 echo -e '\E[37;44m'"\033[1m>>>>>>>>>>$THEARDS_COUNT THEARDS WITH TIMEOUT 180 minutes \033[0m"
 
 
@@ -207,6 +211,7 @@ for i in $(seq 0 $LAST_THEARD_INDEX)
 
 
     #run bdd theard
+    echo -e '\E[37;44m'"\033[1m>>>>>>>>>>RUN THEARD $THEARD_GROUP $THEARD_ID on CPUs ${THEARD_CPUS[$i]}\033[0m"
     ~/git-bdd-runner.sh $GIT $HOME/$ROOTID $THEARD_GROUP $THEARD_ID $THEARD_HOST $THEARD_PORT ${THEARD_CPUS[$i]} > $THEARD_LOG &
     sleep 10
 done
@@ -258,10 +263,10 @@ for i in $(seq 1 180)
   #exist in progress
   if [ -z "$(echo ${THEARD_STATES[*]} | grep '2')" ]; then
       #all theards ok
-      echo -e "\x1b[5;42;37m>>>>>>>>>>ALL THEARDS END  BDD OK\x1b[0m"
       #FIXME print all state
       printAllState "withoutLogs"
-      killAllTheards
+      echo -e "\x1b[5;42;37m>>>>>>>>>>ALL THEARDS END  BDD OK\x1b[0m"
+      killAllTheards true
       exit 0
   fi
 

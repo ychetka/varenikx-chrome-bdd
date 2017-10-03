@@ -10,7 +10,7 @@
 
 function killContainer {
   containerId=$(docker ps -aqf "name=$ID")
-  docker kill $containerId & > /dev/null
+  docker kill $containerId &> /dev/null
 }
 
 function random_free_tcp_port {

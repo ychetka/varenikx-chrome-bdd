@@ -29,7 +29,7 @@ function initGit {
 function initFiles {
   echo -e "\x1b[5;42;37m>>ENTRYPOINT >> FILE MODE\x1b[0m"
   sudo -E -i -u root \
-    cp -avr /project "/home/bdd/project" >  /dev/null
+    cp -avr /project "/home/bdd/project" > /dev/null
 }
 
 function setProjectAccess {
@@ -105,17 +105,17 @@ function initXvfb {
 
   for i in $(seq 1 10)
     do
-      xdpyinfo -display $DISPLAY >/dev/null 2>&1
+      xdpyinfo -display $DISPLAY > /dev/null 2>&1
         if [ $? -eq 0 ]; then
           echo -e "\x1b[5;42;37m>>ENTRYPOINT >> X-VIRTUAL STARTED\x1b[0m"
           break
         fi
       echo -e "\x1b[37;43m>>ENTRYPOINT >> WAITING XVFB...\x1b[0m"
-      sleep 1
+      sleep 2
   done
 
-  fluxbox -display $DISPLAY &
-  x11vnc -display $DISPLAY -bg -nopw -xkb -usepw -shared -repeat -loop -forever &
+  fluxbox -display $DISPLAY > /dev/null 2>&1 &
+  x11vnc -display $DISPLAY -bg -nopw -xkb -usepw -shared -repeat -loop -forever > /dev/null 2>&1 &
 }
 
 function info {
