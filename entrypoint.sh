@@ -29,7 +29,7 @@ function initGit {
 function initFiles {
   echo -e "\x1b[5;42;37m>>ENTRYPOINT >> FILE MODE\x1b[0m"
   sudo -E -i -u root \
-    cp -avr /project "/home/bdd/project" > /dev/null
+    cp -avr /project "/home/bdd" > /dev/null
 }
 
 function setProjectAccess {
@@ -51,6 +51,7 @@ function setProjectAccess {
     chmod -R 777 $WORKDIR
   sudo -E -i -u root \
     find $WORKDIR -type d -exec chmod 0777 {} ';'
+
 }
 
 setProjectAccess
