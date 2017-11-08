@@ -69,6 +69,7 @@ function random_free_tcp_port {
   echo "${free_ports[@]}"
 }
 
+
 #$1 index $2 state (0 | 1)
 function changeTheardState {
   THEARD_STATES[$1]=$2
@@ -168,13 +169,19 @@ function rerunFailedTheards {
   THEARD_HOSTS[$1]=$THEARD_HOST
   THEARD_PORTS[$1]=$THEARD_PORT
 
-  ~/git-bdd-runner.sh $GIT $HOME/$ROOTID ${THEARD_GROUPS[$1]} ${THEARD_IDS[$1]} ${THEARD_HOSTS[$1]} ${THEARD_PORTS[$1]} ${THEARD_CPUS[$1]}> ${THEARD_LOGS[$1]} &
+  ~/file-bdd-runner.sh "$HOME/src" $HOME/$ROOTID ${THEARD_GROUPS[$1]} ${THEARD_IDS[$1]} ${THEARD_HOSTS[$1]} ${THEARD_PORTS[$1]} ${THEARD_CPUS[$1]}> ${THEARD_LOGS[$1]} &
   sleep 10
 }
 
+cd $HOME
+
+############## INIT GIT
+
+./git-worker.sh "$GIT" "$HOME/src" && ./yarn-worker.sh "$HOME/src" "/dev/null"
+
 
 ############## START THEARDS
-cd $HOME
+
 
 mkdir $ROOTID
 chmod 0777 $ROOTID
@@ -212,7 +219,7 @@ for i in $(seq 0 $LAST_THEARD_INDEX)
 
     #run bdd theard
     echo -e '\E[37;44m'"\033[1m>>>>>>>>>>RUN THEARD $THEARD_GROUP $THEARD_ID on CPUs ${THEARD_CPUS[$i]}\033[0m"
-    ~/git-bdd-runner.sh $GIT $HOME/$ROOTID $THEARD_GROUP $THEARD_ID $THEARD_HOST $THEARD_PORT ${THEARD_CPUS[$i]} > $THEARD_LOG &
+    ~/file-bdd-runner.sh "$HOME/src" $HOME/$ROOTID $THEARD_GROUP $THEARD_ID $THEARD_HOST $THEARD_PORT ${THEARD_CPUS[$i]} > $THEARD_LOG &
     sleep 10
 done
 
