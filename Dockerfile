@@ -10,7 +10,7 @@ ENV SCREEN_HEIGHT 1080
 ENV SCREEN_DEPTH 24
 ENV DISPLAY :0
 ENV NVM_VERSION v0.33.2
-ENV NODE_VERSION v7.10.1
+ENV NODE_VERSION v6.11.3
 ENV WORKDIR "/project"
 ENV RUN ''
 ENV HOME "/home/bdd"
@@ -32,7 +32,7 @@ RUN chmod 777 $HOME && chmod -R 777 $HOME
 
 #nvm
 USER bdd
-RUN wget -qO- https://raw.githubusercontent.com/creationix/nvm/v0.33.2/install.sh | bash
+RUN wget -qO- https://raw.githubusercontent.com/creationix/nvm/$NVM_VERSION/install.sh | bash
 
 #nodejs
 RUN /bin/bash -c "source $NVM_DIR/nvm.sh && nvm install $NODE_VERSION && nvm use --delete-prefix $NODE_VERSION"
