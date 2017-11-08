@@ -99,9 +99,9 @@ if [ -n "$3" ]; then
 
   #$SETTING=$VALUE example: filter=foo, tags=bar, skipMenu=baz
 
-  COMMAND="yarn run test:spec -- --$SETTING=$VALUE --workspace=bdd.corplan.ru --modelId=3c5008d019203fcdfcb9226435580787 --skipMenu"
+  COMMAND="yarn run test:spec -- --$SETTING=$VALUE --workspace=bdd.corplan.ru --skipMenu"
 else
-  COMMAND="yarn run test:spec -- --workspace=bdd.corplan.ru --modelId=3c5008d019203fcdfcb9226435580787 --skipMenu --skipTags=blank,bug,modeller"
+  COMMAND="yarn run test:spec -- --workspace=bdd.corplan.ru --skipMenu --skipTags=blank,bug,modeller"
 fi
 
 docker run --cpuset-cpus="$CPU" --name "$ID" -p $HOST_IP:$FREEPORT:5900 -e VNCPORT="$FREEPORT" -e ID="$ID" -e GIT="$1" -e RERUNCOUNT="5" -e FAILEDPARSER="node ./bin/cucumber-failed-parser.js" -e RUN="$COMMAND" -v "$AHOME/$ID/":"/$ID" varenikx/chrome-bdd:latest &
