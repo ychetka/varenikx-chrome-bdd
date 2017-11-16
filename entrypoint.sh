@@ -89,11 +89,7 @@ export -f setState
 
 # $1 exit code
 function shutdown () {
-  if [ -n "$GIT" ]; then
-    echo -e "$1" > /$ID/$1
-  else
-    echo -e "$1" > $WORKDIR/$1
-  fi
+  echo -e "$1" > /$ID/$1
 
   kill -s SIGTERM $NODE_PID
   wait $NODE_PID
@@ -163,9 +159,14 @@ do
 done
 }
 
+function initServerOnly {
+  echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> START SERVER ONLY. SKIP COMPILE STEP\033[0m"
+  cd $WORKDIR
+  yarn server
+}
+
 function initYarn {
 # Install node_modules, run webpack compile, run yaxy proxy
-  echo WORKDIR - $WORKDIR
   cd $WORKDIR
   yarn install
   node server.js --progress --local > $WEBPACKLOG &
@@ -196,7 +197,7 @@ function webpackInitWatcher {
         echo -e "\x1b[5;42;37m>>ENTRYPOINT >> ip route: $(ip route show)\x1b[0m"
         echo -e "\x1b[5;42;37m>>ENTRYPOINT >> ip route: $(ip addr)\x1b[0m"
 
-        echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> VNC WAIT in 10.0.0.1 at port $VNCPORT\033[0m"
+        echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> VNC WAIT in 10.0.0.1:$VNCPORT\033[0m"
 
         sleep 10
 
@@ -216,12 +217,12 @@ function webpackInitWatcher {
             echo -e "\x1b[5;41;37m>>ENTRYPOINT >> RERUN. Attempt number 0\x1b[0m"
             echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> RUN: $RUN --rerun\033[0m"
             /bin/bash -c 'cd $WORKDIR && $RUN --rerun'
-            else
-             echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> RUN MODE: $RUN\033[0m"
-             /bin/bash -c 'cd $WORKDIR && $RUN'
+          else
+            echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> RUN MODE: $RUN\033[0m"
+            /bin/bash -c 'cd $WORKDIR && $RUN'
           fi
 
-          isFailed=$(/bin/bash -c "$FAILEDPARSER");
+          isFailed=$(/bin/bash -c "cd $WORKDIR && $FAILEDPARSER");
           LOCKRERUN=0
 
           if [ -n "$RERUNCOUNT" ]; then
@@ -229,7 +230,7 @@ function webpackInitWatcher {
             if [ "$isFailed" = "true" ]; then
               for i in $(seq 1 $RERUNCOUNT)
                 do
-                  isFailed=$(/bin/bash -c "$FAILEDPARSER");
+                  isFailed=$(/bin/bash -c "cd $WORKDIR && $FAILEDPARSER");
 
                   if [ "$isFailed" = "true" ]; then
                     echo -e "\x1b[5;41;37m>>ENTRYPOINT >> RERUN. Attempt number $i\x1b[0m"
@@ -263,7 +264,7 @@ function webpackInitWatcher {
                   fi
               done
 
-              isFailed=$(/bin/bash -c "$FAILEDPARSER");
+              isFailed=$(/bin/bash -c "cd $WORKDIR && $FAILEDPARSER");
             fi
           fi
 
@@ -298,8 +299,17 @@ initXvfb
 
 # Set access
 if [ -f "$WORKDIR/package.json" ]; then
+
   info
-  initYarn
+
+  if [ -f "$WORKDIR/public/app.bundle.js" ]; then
+    echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> FOUND COMPILED PROJECT. SKIP COMPILE STEP\033[0m"
+    initServerOnly &
+    setState "init.started"
+  else
+    initYarn
+  fi
+
   webpackInitWatcher
 else
     echo -e "\x1b[5;41;37m>>ENTRYPOINT >> FAILED package.json IS EMPTY OR NOT AVAILABILITY\x1b[0m"

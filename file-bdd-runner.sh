@@ -88,7 +88,7 @@ chmod 0777 $ID
 
 
 if [ -f "$AHOME/$ID/@rerun.txt" ]; then
-   echo -e '\E[37;44m'"\033[1m>>>THEARD >> RERUN MODE >> TIMEOUT 180 minutes\033[0m"
+   echo -e '\E[37;44m'"\033[1m>>>THEARD >> RERUN MODE\033[0m"
 else
    echo -e '\E[37;44m'"\033[1m>>>THEARD >> RUN MODE >> TIMEOUT 180 minutes\033[0m"
 fi
@@ -106,7 +106,7 @@ fi
 
 docker run --cpuset-cpus="$CPU" --name "$ID" -p $HOST_IP:$FREEPORT:5900 -e VNCPORT="$FREEPORT" -e ID="$ID" -e RERUNCOUNT="5" -e FAILEDPARSER="node ./bin/cucumber-failed-parser.js" -e RUN="$COMMAND" -v "$AHOME/$ID/":"/$ID" -v "$1/":"/project" varenikx/chrome-bdd:latest &
 
-# 180 minutes
+# 60 minutes
 for i in $(seq 1 180)
   do
     #slep

@@ -138,6 +138,11 @@ function printFailedState {
   done
 }
 
+function failedCompile {
+  echo -e "\x1b[5;41;37m>>FAILED COMPILE PROJECT!\x1b[0m"
+  exit 1
+}
+
 #$1 thead index
 function rerunFailedTheards {
   THEARD_ID=$(uuidgen)
@@ -170,14 +175,14 @@ function rerunFailedTheards {
   THEARD_PORTS[$1]=$THEARD_PORT
 
   ~/file-bdd-runner.sh "$HOME/src" $HOME/$ROOTID ${THEARD_GROUPS[$1]} ${THEARD_IDS[$1]} ${THEARD_HOSTS[$1]} ${THEARD_PORTS[$1]} ${THEARD_CPUS[$1]}> ${THEARD_LOGS[$1]} &
-  sleep 10
+  sleep 30
 }
 
 cd $HOME
 
 ############## INIT GIT
 
-./git-worker.sh "$GIT" "$HOME/src" && ./yarn-worker.sh "$HOME/src" "/dev/null"
+~/git-worker.sh "$GIT" "$HOME/src" && ~/yarn-worker.sh "$HOME/src" "/dev/null" || failedCompile
 
 
 ############## START THEARDS
@@ -186,7 +191,7 @@ cd $HOME
 mkdir $ROOTID
 chmod 0777 $ROOTID
 
-echo -e '\E[37;44m'"\033[1m>>>>>>>>>> <br> BUILD ID  $ROOTID <br> \033[0m"
+echo -e '\E[37;44m'"\033[1m>>>>>>>>>> *** BUILD ID  $ROOTID ***\033[0m"
 echo -e '\E[37;44m'"\033[1m>>>>>>>>>>$THEARDS_COUNT THEARDS WITH TIMEOUT 180 minutes \033[0m"
 
 
@@ -220,7 +225,7 @@ for i in $(seq 0 $LAST_THEARD_INDEX)
     #run bdd theard
     echo -e '\E[37;44m'"\033[1m>>>>>>>>>>RUN THEARD $THEARD_GROUP $THEARD_ID on CPUs ${THEARD_CPUS[$i]}\033[0m"
     ~/file-bdd-runner.sh "$HOME/src" $HOME/$ROOTID $THEARD_GROUP $THEARD_ID $THEARD_HOST $THEARD_PORT ${THEARD_CPUS[$i]} > $THEARD_LOG &
-    sleep 10
+    sleep 30
 done
 
 
