@@ -12,28 +12,6 @@ function complited {
   echo -e "\x1b[5;42;37m>>GIT-WORKER >> GET FILES OK\x1b[0m"
 }
 
-function cloneRepository {
-  export REPOSITORY=$(echo ${1} | jq -r '.repository')
-  export AUTH_TOKEN=$(echo ${1} | jq -r '.token')
-  export PULL_REQUEST_ID=$(echo ${1} | jq -r '.pullRequestId')
-  export BRANCH=$(echo ${1} | jq -r '.branch')
-
-  rm -rf $2
-  mkdir -p $2
-
-  echo -e "\x1b[37;43m>>GIT-WORKER >> WAITING GIT...\x1b[0m"
-
-  #git init || error
-  echo -e "\x1b[37;43m>>GIT-WORKER >> CLONE https://$AUTH_TOKEN@github.com/$REPOSITORY.git\x1b[0m"
-
-  git clone https://$AUTH_TOKEN@github.com/$REPOSITORY.git "$2" || error
-
-  echo -e "\x1b[37;43m>>GIT-WORKER >> LOAD PULL REQUEST...\x1b[0m"
-  cd $2
-  git fetch origin pull/$PULL_REQUEST_ID/head:$BRANCH || error
-  git checkout $BRANCH || error
-}
-
 #$1 gitdata
 #$2 output
 function initGitData {
@@ -57,11 +35,11 @@ function initGitData {
 
   echo -e "\x1b[37;43m>>GIT-WORKER >> CLONE https://$AUTH_TOKEN@github.com/$REPOSITORY.git\x1b[0m"
   git clone https://$AUTH_TOKEN@github.com/$REPOSITORY.git "$2" || error
-  echo -e "\x1b[37;43m>>GIT-WORKER >> LOAD PULL REQUEST...\x1b[0m"
+  echo -e "\x1b[37;43m>>GIT-WORKER >> LOAD PULL REQUEST $PULL_REQUEST_ID...\x1b[0m"
 
   cd $2
 
-  git fetch origin pull/$PULL_REQUEST_Id/head:$BRANCH
+  git fetch origin pull/$PULL_REQUEST_ID/head:$BRANCH
   git checkout $BRANCH
 
   complited
