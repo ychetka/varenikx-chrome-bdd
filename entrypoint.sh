@@ -162,7 +162,7 @@ done
 function initServerOnly {
   echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> START SERVER ONLY. SKIP COMPILE STEP\033[0m"
   cd $WORKDIR
-  yarn server
+  yarn server &> /dev/null
 }
 
 function initYarn {
