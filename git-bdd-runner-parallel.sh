@@ -17,17 +17,19 @@
 
 GIT=$1
 FEATURES=$2
+WORKSPACES=$3
 ROOTID=$(uuidgen)
 THEARDS_COUNT=$(echo $FEATURES | jq -r '. | length')
 let LAST_THEARD_INDEX=$THEARDS_COUNT-1
 THEARD_IDS=( )
+THEARD_WORKSPACES=( )
 THEARD_GROUPS=( )
 THEARD_DIRS=( )
 THEARD_LOGS=( )
 THEARD_STATES=( )
 THEARD_HOSTS=( )
 THEARD_PORTS=( )
-THEARD_CPUS=( "0-1" "2-3" "4-5" "6-7" "8-9" "10-11" "11-12" "13-14" )
+
 THEARD_RERUNS=( )
 
 function killAllTheards {
@@ -154,7 +156,7 @@ function rerunFailedTheards {
   mkdir $THEARD_DIR
 
   if [ -f "${THEARD_DIRS[$1]}/@rerun.txt" ]; then
-    echo -e '\E[37;44m'"\033[1m>>>>>>>>>>USE EXTERNAL RERUN ${THEARD_DIRS[$1]}/@rerun.txt FOR ${THEARD_GROUPS[$1]} \033[0m"
+    echo -e '\E[37;44m'"\033[1m>>>>>>>>>>RERUN ${THEARD_DIRS[$1]}/@rerun.txt for ${THEARD_GROUPS[$1]} at ${THEARD_WORKSPACES[$1]} \033[0m"
     cp "${THEARD_DIRS[$1]}/@rerun.txt" "$THEARD_DIR/@rerun.txt"
     rm -rf "${THEARD_DIRS[$1]}/@rerun.txt"
   fi
@@ -174,7 +176,7 @@ function rerunFailedTheards {
   THEARD_HOSTS[$1]=$THEARD_HOST
   THEARD_PORTS[$1]=$THEARD_PORT
 
-  ~/file-bdd-runner.sh "$HOME/src" $HOME/$ROOTID ${THEARD_GROUPS[$1]} ${THEARD_IDS[$1]} ${THEARD_HOSTS[$1]} ${THEARD_PORTS[$1]} ${THEARD_CPUS[$1]}> ${THEARD_LOGS[$1]} &
+  ~/file-bdd-runner.sh "$HOME/src" $HOME/$ROOTID ${THEARD_GROUPS[$1]} ${THEARD_IDS[$1]} ${THEARD_HOSTS[$1]} ${THEARD_PORTS[$1]} ${THEARD_WORKSPACES[$1]}> ${THEARD_LOGS[$1]} &
   sleep 30
 }
 
@@ -201,6 +203,7 @@ for i in $(seq 0 $LAST_THEARD_INDEX)
     THEARD_DIR=$HOME/$ROOTID/$THEARD_ID
     THEARD_LOG=$HOME/$ROOTID/$i
     THEARD_GROUP=$(echo $FEATURES | jq -r '.['$i']')
+    THEARD_WORKSPACE=$(echo $WORKSPACES | jq -r '.['$i']')
     THEARD_STATE=2
     THEARD_HOST="127.0.0.1"
     THEARD_PORT=$(random_free_tcp_port)
@@ -215,6 +218,7 @@ for i in $(seq 0 $LAST_THEARD_INDEX)
     THEARD_DIRS=( "${THEARD_DIRS[@]}" "$THEARD_DIR" )
     THEARD_LOGS=( "${THEARD_LOGS[@]}" "$THEARD_LOG" )
     THEARD_GROUPS=( "${THEARD_GROUPS[@]}" "$THEARD_GROUP" )
+    THEARD_WORKSPACES=( "${THEARD_WORKSPACES[@]}" "$THEARD_WORKSPACE" )
     THEARD_STATES=( "${THEARD_STATES[@]}" "$THEARD_STATE" )
     THEARD_HOSTS=( "${THEARD_HOSTS[@]}" "$THEARD_HOST" )
     THEARD_PORTS=( "${THEARD_PORTS[@]}" "$THEARD_PORT" )
@@ -223,8 +227,8 @@ for i in $(seq 0 $LAST_THEARD_INDEX)
 
 
     #run bdd theard
-    echo -e '\E[37;44m'"\033[1m>>>>>>>>>>RUN THEARD $THEARD_GROUP $THEARD_ID on CPUs ${THEARD_CPUS[$i]}\033[0m"
-    ~/file-bdd-runner.sh "$HOME/src" $HOME/$ROOTID $THEARD_GROUP $THEARD_ID $THEARD_HOST $THEARD_PORT ${THEARD_CPUS[$i]} > $THEARD_LOG &
+    echo -e '\E[37;44m'"\033[1m>>>>>>>>>>RUN THEARD $THEARD_GROUP with id: $THEARD_ID at $THEARD_WORKSPACE \033[0m"
+    ~/file-bdd-runner.sh "$HOME/src" $HOME/$ROOTID $THEARD_GROUP $THEARD_ID $THEARD_HOST $THEARD_PORT $THEARD_WORKSPACE > $THEARD_LOG &
     sleep 30
 done
 
