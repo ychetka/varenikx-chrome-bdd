@@ -202,20 +202,17 @@ function webpackInitWatcher {
         sleep 10
 
         if [ -f "/$ID/@rerun.txt" ]; then
-          mkdir "$WORKDIR/reports/"
+          mkdir "$WORKDIR/reports/" || echo "Reports directory exist."
           cp "/$ID/@rerun.txt" "$WORKDIR/reports/@rerun.txt"
           rm -rf "/$ID/@rerun.txt"
 
-          echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> EXTRENAL RERUN WILL BE USE FOR FIRST!\033[0m"
-          echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> $(cat $WORKDIR/reports/@rerun.txt)\033[0m"
+          echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> RERUN WILL BE USE FOR RUN THEARD!\033[0m"
+          echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> $(cat "$WORKDIR/reports/@rerun.txt")\033[0m"
         fi
 
         if [ -n "$RUN" ]; then
           if [ -f "$WORKDIR/reports/@rerun.txt" ]; then
-            let RERUNCOUNT=$RERUNCOUNT-1
-
-            echo -e "\x1b[5;41;37m>>ENTRYPOINT >> RERUN. Attempt number 0\x1b[0m"
-            echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> RUN: $RUN --rerun\033[0m"
+            echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> RERUN MODE: $RUN --rerun\033[0m"
             /bin/bash -c 'cd $WORKDIR && $RUN --rerun'
           else
             echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> RUN MODE: $RUN\033[0m"
@@ -223,50 +220,6 @@ function webpackInitWatcher {
           fi
 
           isFailed=$(/bin/bash -c "cd $WORKDIR && $FAILEDPARSER");
-          LOCKRERUN=0
-
-          if [ -n "$RERUNCOUNT" ]; then
-
-            if [ "$isFailed" = "true" ]; then
-              for i in $(seq 1 $RERUNCOUNT)
-                do
-                  isFailed=$(/bin/bash -c "cd $WORKDIR && $FAILEDPARSER");
-
-                  if [ "$isFailed" = "true" ]; then
-                    echo -e "\x1b[5;41;37m>>ENTRYPOINT >> RERUN. Attempt number $i\x1b[0m"
-                    echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >>RUN: $RUN --rerun\033[0m"
-
-                    ##пустой реран, но есть ошибки - берем предведущий
-                    if [ -z "$(cat $WORKDIR/reports/@rerun.txt)" ]; then
-                      if [ -f "$WORKDIR/reports/@rerun.txt.bak" ]; then
-                        echo -e "\x1b[5;41;37m>>ENTRYPOINT >> RERUN FAILED! USE LAST RERUN. $WORKDIR/reports/@rerun.txt.bak \x1b[0m"
-                        cp "$WORKDIR/reports/@rerun.txt.bak" "$WORKDIR/reports/@rerun.txt"
-                      else
-                        LOCKRERUN=1
-                        echo -e "\x1b[5;41;37m>>ENTRYPOINT >> RERUN FAILED! LAST RERUN FAILED!. LOCKRERUN!!! \x1b[0m"
-                      fi
-                    fi
-
-                    ##валидный реран, есть ошибки, делаем копию
-                    if [ -n "$(cat $WORKDIR/reports/@rerun.txt)" ]; then
-                      echo -e "\x1b[5;41;37m>>ENTRYPOINT >> BACKUP RERUN FILE >> $WORKDIR/reports/@rerun.txt.bak \x1b[0m"
-                      cp "$WORKDIR/reports/@rerun.txt" "$WORKDIR/reports/@rerun.txt.bak"
-                    fi
-
-                    if (( $LOCKRERUN == 0 )); then
-                      /bin/bash -c 'cd $WORKDIR && $RUN --rerun'
-                    else
-                      echo -e "\x1b[5;41;37m>>ENTRYPOINT >> RERUN FAILED! LAST RERUN IS EMPTY! HAS FAILED FEATURES! \x1b[0m"
-                      break
-                    fi
-                  else
-                    break
-                  fi
-              done
-
-              isFailed=$(/bin/bash -c "cd $WORKDIR && $FAILEDPARSER");
-            fi
-          fi
 
           #FIXME система статистики
           if [ "$isFailed" = "true" ]; then
@@ -275,7 +228,7 @@ function webpackInitWatcher {
               cp "$WORKDIR/reports/@rerun.txt" "/$ID/@rerun.txt"
               echo -e "\x1b[5;41;37m>>ENTRYPOINT >> OUTPUT RERUN AT /$ID/@rerun.txt \x1b[0m"
               echo -e "\x1b[5;41;37m>>ENTRYPOINT >> FAILED FEATURES: \x1b[0m"
-              echo -e  "$(cat /$ID/@rerun.txt)"
+              echo -e "\x1b[5;41;37m>>ENTRYPOINT >> $(cat "/$ID/@rerun.txt")\x1b[0m"
             fi
             shutdown 1
             else
