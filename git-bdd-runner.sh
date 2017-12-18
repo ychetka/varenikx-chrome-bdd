@@ -6,7 +6,7 @@
 ##$4 id
 ##$5 host for mapping
 ##$6 port for mapping
-##$7 cpu
+##$7 workspace
 
 function killContainer {
   containerId=$(docker ps -aqf "name=$ID")
@@ -42,13 +42,12 @@ ID=
 AHOME=
 HOST_IP=
 FREEPORT=
-CPU=
+WORKSPACE=
 
 if [ -n "$7" ]; then
-  CPU=$7
+  WORKSPACE=$7
 else
-  let last=$(nproc)-1
-  CPU="0-$last"
+  WORKSPACE="bdd.corplan.ru"
 fi
 
 if [ -n "$6" ]; then
@@ -99,12 +98,12 @@ if [ -n "$3" ]; then
 
   #$SETTING=$VALUE example: filter=foo, tags=bar, skipMenu=baz
 
-  COMMAND="yarn run test:spec -- --$SETTING=$VALUE --workspace=bdd.corplan.ru --skipMenu"
+  COMMAND="yarn run test:spec -- --$SETTING=$VALUE --workspace=$WORKSPACE --skipMenu"
 else
-  COMMAND="yarn run test:spec -- --workspace=bdd.corplan.ru --skipMenu --skipTags=blank,bug,modeller"
+  COMMAND="yarn run test:spec -- --workspace=$WORKSPACE --skipMenu --skipTags=blank,bug,modeller"
 fi
 
-docker run --cpuset-cpus="$CPU" --name "$ID" -p $HOST_IP:$FREEPORT:5900 -e VNCPORT="$FREEPORT" -e ID="$ID" -e GIT="$1" -e RERUNCOUNT="0" -e FAILEDPARSER="node ./bin/cucumber-failed-parser.js" -e RUN="$COMMAND" -v "$AHOME/$ID/":"/$ID" varenikx/chrome-bdd:latest &
+docker run --name "$ID" -p $HOST_IP:$FREEPORT:5900 -e VNCPORT="$FREEPORT" -e ID="$ID" -e GIT="$1" -e RERUNCOUNT="0" -e FAILEDPARSER="node ./bin/cucumber-failed-parser.js" -e RUN="$COMMAND" -v "$AHOME/$ID/":"/$ID" varenikx/chrome-bdd:latest &
 
 # 180 minutes
 for i in $(seq 1 180)
