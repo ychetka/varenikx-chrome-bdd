@@ -37,7 +37,9 @@ function setProjectAccess {
     chmod -R 777 '/home/bdd'
   cd /home/bdd
 
-  mkdir project
+  if [ ! -d "project" ]; then
+    mkdir project
+  fi
 
   export WORKDIR="/home/bdd/project"
 
@@ -121,7 +123,8 @@ function info {
   echo -e "\x1b[37;43m>>ENTRYPOINT >> NODE VERSION $(node -v)\x1b[0m"
   echo -e "\x1b[37;43m>>ENTRYPOINT >> NPM VERSION $(npm -v)\x1b[0m"
   echo -e "\x1b[37;43m>>ENTRYPOINT >> YARN VERSION $(yarn --version)\x1b[0m"
-  echo -e "\x1b[37;43m>>ENTRYPOINT >> $(java -version)\x1b[0m"
+  echo -e "\x1b[37;43m>>ENTRYPOINT >> JAVA \x1b[0m"
+  echo -e $(java -version)
 }
 
 
@@ -202,7 +205,11 @@ function webpackInitWatcher {
         sleep 10
 
         if [ -f "/$ID/@rerun.txt" ]; then
-          mkdir "$WORKDIR/reports/" || echo "Reports directory exist."
+
+          if [ ! -d "$WORKDIR/reports" ]; then
+            mkdir "$WORKDIR/reports/"
+          fi
+
           cp "/$ID/@rerun.txt" "$WORKDIR/reports/@rerun.txt"
           rm -rf "/$ID/@rerun.txt"
 

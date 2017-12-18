@@ -153,7 +153,9 @@ function rerunFailedTheards {
   THEARD_HOST="127.0.0.1"
   THEARD_PORT=$(random_free_tcp_port)
 
-  mkdir $THEARD_DIR
+  if [ ! -d "$THEARD_DIR" ]; then
+    mkdir $THEARD_DIR
+  fi
 
   if [ -f "${THEARD_DIRS[$1]}/@rerun.txt" ]; then
     echo -e '\E[37;44m'"\033[1m>>>>>>>>>>RERUN ${THEARD_DIRS[$1]}/@rerun.txt for ${THEARD_GROUPS[$1]} at ${THEARD_WORKSPACES[$1]} \033[0m"
@@ -190,8 +192,10 @@ cd $HOME
 
 ############## START THEARDS
 
+if [ ! -d "$ROOTID" ]; then
+  mkdir $ROOTID
+fi
 
-mkdir $ROOTID
 chmod 0777 $ROOTID
 
 echo -e '\E[37;44m'"\033[1m>>>>>>>>>> *** BUILD ID  $ROOTID ***\033[0m"

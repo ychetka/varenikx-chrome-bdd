@@ -81,7 +81,10 @@ fi
 
 cd $AHOME
 
-mkdir $ID
+if [ ! -d "$ID" ]; then
+  mkdir $ID
+fi
+
 chmod 0777 $ID
 
 
