@@ -180,7 +180,7 @@ function rerunFailedTheards {
   THEARD_PORTS[$1]=$THEARD_PORT
 
   ~/file-bdd-runner.sh "$HOME/src" $HOME/$ROOTID ${THEARD_GROUPS[$1]} ${THEARD_IDS[$1]} ${THEARD_HOSTS[$1]} ${THEARD_PORTS[$1]} ${THEARD_WORKSPACES[$1]}> ${THEARD_LOGS[$1]} &
-  sleep 5
+  sleep 20
 }
 
 cd $HOME
@@ -234,7 +234,7 @@ for i in $(seq 0 $LAST_THEARD_INDEX)
     #run bdd theard
     echo -e '\E[37;44m'"\033[1m>>>>>>>>>>RUN THEARD $THEARD_GROUP with id: $THEARD_ID at $THEARD_WORKSPACE \033[0m"
     ~/file-bdd-runner.sh "$HOME/src" $HOME/$ROOTID $THEARD_GROUP $THEARD_ID $THEARD_HOST $THEARD_PORT $THEARD_WORKSPACE > $THEARD_LOG &
-    sleep 5
+    sleep 20
 done
 
 
