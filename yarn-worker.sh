@@ -16,7 +16,7 @@ function initYarn {
 # install node modules, run webpack compile
   cd $1
 
-  source /root/.nvm/nvm.sh
+  source ~/.nvm/nvm.sh
   nvm use "v6.11.3" &> /dev/null
   nvm alias default "v6.11.3" &> /dev/null
 
