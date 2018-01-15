@@ -61,7 +61,7 @@ if [ -n "$5" ]; then
 else
   PPP_STATE=$(ip link show | grep ppp0)
   if [ -n "$PPP_STATE" ]; then
-    HOST_IP="10.0.0.1"
+    HOST_IP="10.0.0.10"
   else
     HOST_IP="127.0.0.1"
   fi
@@ -106,7 +106,7 @@ else
   COMMAND="yarn run test:spec -- --workspace=$WORKSPACE --skipMenu --skipTags=blank,bug,modeller"
 fi
 
-docker run --name "$ID" -p $HOST_IP:$FREEPORT:5900 -e VNCPORT="$FREEPORT" -e ID="$ID" -e FAILEDPARSER="node ./bin/cucumber-failed-parser.js" -e RUN="$COMMAND" -v "$AHOME/$ID/":"/$ID" -v "$1/":"/project" varenikx/chrome-bdd:latest &
+docker run --name "$ID" -p $HOST_IP:$FREEPORT:5900 -e HOST_IP="$HOST_IP" -e VNCPORT="$FREEPORT" -e ID="$ID" -e FAILEDPARSER="node ./bin/cucumber-failed-parser.js" -e RUN="$COMMAND" -v "$AHOME/$ID/":"/$ID" -v "$1/":"/project" varenikx/chrome-bdd:latest &
 
 # 60 minutes
 for i in $(seq 1 180)

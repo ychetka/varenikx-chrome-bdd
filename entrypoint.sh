@@ -195,12 +195,12 @@ function webpackInitWatcher {
         echo -e "\x1b[5;42;37m>>ENTRYPOINT >> GOOGLE-CHROME-STABLE: $(apt-cache show google-chrome-stable | grep -i version)\x1b[0m"
 
         echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> GEOMETRY: $GEOMETRY\033[0m"
-        echo -e "\x1b[5;42;37m>>ENTRYPOINT >> You must connect with VNC client\x1b[0m"
+
         echo -e "\x1b[5;42;37m>>ENTRYPOINT >> Network information\x1b[0m"
         echo -e "\x1b[5;42;37m>>ENTRYPOINT >> ip route: $(ip route show)\x1b[0m"
         echo -e "\x1b[5;42;37m>>ENTRYPOINT >> ip route: $(ip addr)\x1b[0m"
 
-        echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> VNC WAIT in 10.0.0.1:$VNCPORT\033[0m"
+        echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> VNC WAIT in $HOST_IP:$VNCPORT\033[0m"
 
         sleep 10
 
