@@ -170,7 +170,7 @@ function rerunFailedTheards {
   PPP_STATE=$(ip link show | grep ppp0)
 
   if [ -n "$PPP_STATE" ]; then
-    THEARD_HOST="10.0.0.10"
+    THEARD_HOST="10.0.0.1"
   fi
 
   THEARD_IDS[$1]=$THEARD_ID
@@ -216,7 +216,7 @@ for i in $(seq 0 $LAST_THEARD_INDEX)
 
     PPP_STATE=$(ip link show | grep ppp0)
     if [ -n "$PPP_STATE" ]; then
-      THEARD_HOST="10.0.0.10"
+      THEARD_HOST="10.0.0.1"
     fi
 
     THEARD_IDS=( "${THEARD_IDS[@]}" "$THEARD_ID" )

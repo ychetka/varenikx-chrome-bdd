@@ -47,7 +47,7 @@ WORKSPACE=
 if [ -n "$7" ]; then
   WORKSPACE=$7
 else
-  WORKSPACE="bdd.corplan.ru"
+  WORKSPACE="bdd.optimacros.com"
 fi
 
 if [ -n "$6" ]; then
@@ -61,7 +61,7 @@ if [ -n "$5" ]; then
 else
   PPP_STATE=$(ip link show | grep ppp0)
   if [ -n "$PPP_STATE" ]; then
-    HOST_IP="10.0.0.10"
+    HOST_IP="10.0.0.1"
   else
     HOST_IP="127.0.0.1"
   fi
@@ -101,9 +101,9 @@ if [ -n "$3" ]; then
 
   #$SETTING=$VALUE example: filter=foo, tags=bar, skipMenu=baz
 
-  COMMAND="yarn run test:spec -- --$SETTING=$VALUE --workspace=$WORKSPACE --skipMenu"
+  COMMAND="yarn run test:spec -- --$SETTING=$VALUE --apiHost=$WORKSPACE --skipMenu"
 else
-  COMMAND="yarn run test:spec -- --workspace=$WORKSPACE --skipMenu --skipTags=blank,bug,modeller"
+  COMMAND="yarn run test:spec -- --apiHost=$WORKSPACE --skipMenu --skipTags=blank,bug,modeller"
 fi
 
 docker run --name "$ID" -p $HOST_IP:$FREEPORT:5900 -e HOST_IP="$HOST_IP" -e VNCPORT="$FREEPORT" -e ID="$ID" -e GIT="$1" -e FAILEDPARSER="node ./bin/cucumber-failed-parser.js" -e RUN="$COMMAND" -v "$AHOME/$ID/":"/$ID" varenikx/chrome-bdd:latest &

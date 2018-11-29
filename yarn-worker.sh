@@ -33,7 +33,7 @@ function initYarn {
   complited "\x1b[5;42;37m>>YARN-WORKER >> YARN INSTALL OK\x1b[0m"
 
   echo -e "\x1b[37;43m>>YARN-WORKER >> RUN WEBPACK COMPILE...\x1b[0m"
-  yarn webpack --local --hot &> ./webpack.log
+  yarn webpack --local --useWs &> ./webpack.log
 
   WEBPACK=$(cat "./webpack.log" | grep 'ERROR in')
 
