@@ -1,0 +1,89 @@
+Sending build context to Docker daemon  187.4kB
+Step 1/29 : FROM debian:latest
+ ---> 4879790bd60d
+Step 2/29 : ENV DEBIAN_FRONTEND noninteractive
+ ---> Using cache
+ ---> 2c3c9a179990
+Step 3/29 : ENV NVM_VERSION v0.33.2
+ ---> Using cache
+ ---> 5f2b46e408ad
+Step 4/29 : ENV NODE_VERSION v6.11.3
+ ---> Using cache
+ ---> bcefe7ff6b17
+Step 5/29 : ENV WORKDIR "/project"
+ ---> Using cache
+ ---> d96a798f79f6
+Step 6/29 : ENV RUN ''
+ ---> Using cache
+ ---> 3b4c14c64e96
+Step 7/29 : ENV HOME "/home/bdd"
+ ---> Using cache
+ ---> 15ca2aaffd5e
+Step 8/29 : ENV NVM_DIR "/home/bdd/.nvm"
+ ---> Using cache
+ ---> 4d9220590720
+Step 9/29 : RUN apt-get update -qqy && apt-get -qqy --no-install-recommends install apt-utils ca-certificates unzip wget git jq sudo bzip2 mc
+ ---> Using cache
+ ---> 3cd81dc62248
+Step 10/29 : RUN apt-get update &&     apt-get -y install xvfb gconf-service libasound2 libatk1.0-0 libc6 libcairo2 libcups2       libdbus-1-3 libexpat1 libfontconfig1 libgcc1 libgconf-2-4 libgdk-pixbuf2.0-0 libglib2.0-0       libgtk-3-0 libnspr4 libpango-1.0-0 libpangocairo-1.0-0 libstdc++6 libx11-6 libx11-xcb1 libxcb1       libxcomposite1 libxcursor1 libxdamage1 libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 libxss1       libxtst6 ca-certificates fonts-liberation libappindicator1 libnss3 lsb-release xdg-utils wget &&     rm -rf /var/lib/apt/lists/*
+ ---> Using cache
+ ---> f92e35442e09
+Step 11/29 : RUN useradd -r -m -G audio,video,sudo -s /bin/bash bdd && echo 'ALL ALL = (ALL) NOPASSWD: ALL' >> /etc/sudoers && echo 'bdd:bdd' | chpasswd
+ ---> Using cache
+ ---> 3ce1fbe80f3c
+Step 12/29 : RUN chmod 777 $HOME && chmod -R 777 $HOME
+ ---> Using cache
+ ---> 650790344546
+Step 13/29 : USER bdd
+ ---> Using cache
+ ---> dfd4fc072a01
+Step 14/29 : RUN wget -qO- https://raw.githubusercontent.com/creationix/nvm/$NVM_VERSION/install.sh | bash
+ ---> Using cache
+ ---> d1b0e3d0e6a8
+Step 15/29 : RUN /bin/bash -c "source $NVM_DIR/nvm.sh && nvm install $NODE_VERSION && nvm use --delete-prefix $NODE_VERSION"
+ ---> Using cache
+ ---> d276deeb6f2c
+Step 16/29 : ENV NODE_PATH $NVM_DIR/versions/node/$NODE_VERSION/lib/node_modules
+ ---> Using cache
+ ---> 8267a77a4e09
+Step 17/29 : ENV PATH      $NVM_DIR/versions/node/$NODE_VERSION/bin:$PATH
+ ---> Using cache
+ ---> d7a17215707b
+Step 18/29 : RUN npm install -g yarn
+ ---> Using cache
+ ---> c961092b9734
+Step 19/29 : USER root
+ ---> Using cache
+ ---> 20160c04208b
+Step 20/29 : RUN apt-get update -qqy && apt-get -qqy --no-install-recommends install locales locales-all
+ ---> Using cache
+ ---> 95ce9dcbfc82
+Step 21/29 : ENV LC_ALL en_US.UTF-8
+ ---> Using cache
+ ---> e175ccdefa1a
+Step 22/29 : ENV LANG en_US.UTF-8
+ ---> Using cache
+ ---> 40818d1b5f88
+Step 23/29 : ENV LANGUAGE en_US.UTF-8
+ ---> Using cache
+ ---> b3950055c91d
+Step 24/29 : RUN apt-get update -qqy   && apt-get -qqy --no-install-recommends install     fonts-ipafont-gothic     xfonts-100dpi     xfonts-75dpi     xfonts-cyrillic     xfonts-scalable     xfonts-base     xfonts-scalable     fontconfig     libfontconfig
+ ---> Using cache
+ ---> 2d92a7c68514
+Step 25/29 : COPY entrypoint.sh /entrypoint.sh
+ ---> Using cache
+ ---> d01775ba99d6
+Step 26/29 : RUN chmod +x /entrypoint.sh
+ ---> Using cache
+ ---> 74136e142560
+Step 27/29 : CMD ["su", "-", "bdd", "-c", "/bin/bash"]
+ ---> Using cache
+ ---> 798f4736b04c
+Step 28/29 : USER bdd
+ ---> Using cache
+ ---> 2316f1d27497
+Step 29/29 : ENTRYPOINT ["/entrypoint.sh"]
+ ---> Using cache
+ ---> eb4fa7ea4ef8
+Successfully built eb4fa7ea4ef8
+Successfully tagged varenikx/chrome-bdd:latest

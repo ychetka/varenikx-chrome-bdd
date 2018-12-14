@@ -43,11 +43,13 @@ function setProjectAccess {
 
   export WORKDIR="/home/bdd/project"
 
-  if [ -n "$GIT" ]; then
-    initGit
-  else
-    initFiles
-  fi
+#  if [ -n "$GIT" ]; then
+#    initGit
+#  else
+#    initFiles
+#  fi
+
+initFiles
 
   sudo -E -i -u root \
     chmod -R 777 $WORKDIR
@@ -58,8 +60,8 @@ function setProjectAccess {
 
 setProjectAccess
 
-export GEOMETRY="$SCREEN_WIDTH""x""$SCREEN_HEIGHT""x""$SCREEN_DEPTH"
-export DISPLAY=:0
+#export GEOMETRY="$SCREEN_WIDTH""x""$SCREEN_HEIGHT""x""$SCREEN_DEPTH"
+#export DISPLAY=:0
 
 if [ -n "$GIT" ]; then
   export WEBPACKLOG=/$ID/webpack.log
@@ -93,41 +95,15 @@ export -f setState
 function shutdown () {
   echo -e "$1" > /$ID/$1
 
-  kill -s SIGTERM $NODE_PID
-  wait $NODE_PID
-}
-
-function initXvfb {
-
-  Xvfb $DISPLAY -screen 0 $GEOMETRY &
-  NODE_PID=$!
-
-  for i in $(seq 1 10)
-    do
-      xdpyinfo -display $DISPLAY > /dev/null 2>&1
-        if [ $? -eq 0 ]; then
-          echo -e "\x1b[5;42;37m>>ENTRYPOINT >> X-VIRTUAL STARTED\x1b[0m"
-          break
-        fi
-      echo -e "\x1b[37;43m>>ENTRYPOINT >> WAITING XVFB...\x1b[0m"
-      sleep 2
-  done
-
-  fluxbox -display $DISPLAY > /dev/null 2>&1 &
-  x11vnc -display $DISPLAY -bg -nopw -xkb -usepw -shared -repeat -loop -forever > /dev/null 2>&1 &
+#  kill -s SIGTERM $NODE_PID
+#  wait $NODE_PID
 }
 
 function info {
-  echo -e "\x1b[37;43m>>ENTRYPOINT >> SYSTEM\x1b[0m"
-  echo $(lsb_release -a)
   echo -e "\x1b[37;43m>>ENTRYPOINT >> NODE VERSION $(node -v)\x1b[0m"
   echo -e "\x1b[37;43m>>ENTRYPOINT >> NPM VERSION $(npm -v)\x1b[0m"
   echo -e "\x1b[37;43m>>ENTRYPOINT >> YARN VERSION $(yarn --version)\x1b[0m"
-  echo -e "\x1b[37;43m>>ENTRYPOINT >> JAVA \x1b[0m"
-  echo -e $(java -version)
 }
-
-
 
 function _yarnWatcher {
 # Wait webpack
@@ -189,18 +165,12 @@ function webpackInitWatcher {
 
       if [ -f "$WORKDIR/init.started" ]; then
         echo -e "\x1b[5;42;37m>>ENTRYPOINT >> WORKDIR: $WORKDIR\x1b[0m"
-        echo -e "\x1b[5;42;37m>>ENTRYPOINT >> XDPY: OK\x1b[0m"
         echo -e "\x1b[5;42;37m>>ENTRYPOINT >> YARN: OK\x1b[0m"
         echo -e "\x1b[5;42;37m>>ENTRYPOINT >> WEBPACK: OK\x1b[0m"
-        echo -e "\x1b[5;42;37m>>ENTRYPOINT >> GOOGLE-CHROME-STABLE: $(apt-cache show google-chrome-stable | grep -i version)\x1b[0m"
 
-        echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> GEOMETRY: $GEOMETRY\033[0m"
-
-        echo -e "\x1b[5;42;37m>>ENTRYPOINT >> Network information\x1b[0m"
-        echo -e "\x1b[5;42;37m>>ENTRYPOINT >> ip route: $(ip route show)\x1b[0m"
-        echo -e "\x1b[5;42;37m>>ENTRYPOINT >> ip route: $(ip addr)\x1b[0m"
-
-        echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> VNC WAIT in $HOST_IP:$VNCPORT\033[0m"
+#        echo -e "\x1b[5;42;37m>>ENTRYPOINT >> Network information\x1b[0m"
+#        echo -e "\x1b[5;42;37m>>ENTRYPOINT >> ip route: $(ip route show)\x1b[0m"
+#        echo -e "\x1b[5;42;37m>>ENTRYPOINT >> ip route: $(ip addr)\x1b[0m"
 
         sleep 10
 
@@ -213,29 +183,20 @@ function webpackInitWatcher {
           cp "/$ID/@rerun.txt" "$WORKDIR/reports/@rerun.txt"
           rm -rf "/$ID/@rerun.txt"
 
-          echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> RERUN WILL BE USE FOR RUN THEARD!\033[0m"
-          echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> $(cat "$WORKDIR/reports/@rerun.txt")\033[0m"
+#          UNCOMENT IF YOU WANT SEE THIS
+#          echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> RERUN WILL BE USE FOR RUN THREAD!\033[0m"
+#          echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> $(cat "$WORKDIR/reports/@rerun.txt")\033[0m"
         fi
 
         if [ -n "$RUN" ]; then
-          if [ -f "$WORKDIR/reports/@rerun.txt" ]; then
-            echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> RERUN MODE: $RUN --rerun\033[0m"
-            /bin/bash -c 'cd $WORKDIR && $RUN --rerun'
-          else
-            echo -e '\E[37;44m'"\033[1m>>ENTRYPOINT >> RUN MODE: $RUN\033[0m"
-            /bin/bash -c 'cd $WORKDIR && $RUN'
-          fi
+          /bin/bash -c "cd $WORKDIR && $RUN"
 
           isFailed=$(/bin/bash -c "cd $WORKDIR && $FAILEDPARSER");
 
-          #FIXME система статистики
           if [ "$isFailed" = "true" ]; then
-            echo -e "\x1b[5;41;37m>>ENTRYPOINT >> BDD: FAILED. HAS FAILED FEATURES\x1b[0m"
+            echo -e "\x1b[5;41;37m>>ENTRYPOINT >> BDD: FAILED! \x1b[0m"
             if [ -n "$(cat $WORKDIR/reports/@rerun.txt)" ]; then
               cp "$WORKDIR/reports/@rerun.txt" "/$ID/@rerun.txt"
-              echo -e "\x1b[5;41;37m>>ENTRYPOINT >> OUTPUT RERUN AT /$ID/@rerun.txt \x1b[0m"
-              echo -e "\x1b[5;41;37m>>ENTRYPOINT >> FAILED FEATURES: \x1b[0m"
-              echo -e "\x1b[5;41;37m>>ENTRYPOINT >> $(cat "/$ID/@rerun.txt")\x1b[0m"
             fi
             shutdown 1
             else
@@ -253,9 +214,6 @@ function webpackInitWatcher {
       fi
 done
 }
-
-#start Xvfb
-initXvfb
 
 # Set access
 if [ -f "$WORKDIR/package.json" ]; then
@@ -277,4 +235,4 @@ else
 fi
 
 
-wait $NODE_PID
+#wait $NODE_PID

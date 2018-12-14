@@ -1,146 +1,65 @@
 #!/bin/bash
 
 ##$1 directory with project
-##$2 home dir
-##$3 features group - support tag and group
-##$4 id
-##$5 host for mapping
-##$6 port for mapping
-##$7 workspace
-
-function killContainer {
-  containerId=$(docker ps -aqf "name=$ID")
-  docker kill $containerId &> /dev/null
-}
-
-function random_free_tcp_port {
-  local ports="${1:-1}" interim="${2:-2048}" spacing=32
-  local free_ports=( )
-  local taken_ports=( $( netstat -aln | egrep ^tcp | fgrep LISTEN |
-                         awk '{print $4}' | egrep -o '[0-9]+$' |
-                         sort -n | uniq ) )
-  interim=$(( interim + (RANDOM % spacing) ))
-
-  for taken in "${taken_ports[@]}" 65535
-  do
-    while [[ $interim -lt $taken && ${#free_ports[@]} -lt $ports ]]
-    do
-      free_ports+=( $interim )
-      interim=$(( interim + spacing + (RANDOM % spacing) ))
-    done
-    interim=$(( interim > taken + spacing
-                ? interim
-                : taken + spacing + (RANDOM % spacing) ))
-  done
-
-  [[ ${#free_ports[@]} -ge $ports ]] || return 2
-
-  echo "${free_ports[@]}"
-}
+##$2 features group - support tags and filter
+##$3 id
+##$4 apiHost
+##$5 REPORT_PATCH
 
 ID=
-AHOME=
-HOST_IP=
-FREEPORT=
-WORKSPACE=
+PROJECT_DIRECTORY=
+API_HOST=
+ABSOLUTE_REPORT_DIRECTORY=$5
+COMMAND=
+FAILED_PARSER=
 
-if [ -n "$7" ]; then
-  WORKSPACE=$7
+
+PROJECT_NODE_VERSION="v8.11.2"
+source ~/.nvm/nvm.sh &> /dev/null
+nvm install ${PROJECT_NODE_VERSION} &> /dev/null
+nvm use ${PROJECT_NODE_VERSION} &> /dev/null
+nvm alias default ${PROJECT_NODE_VERSION} &> /dev/null
+npm install yarn -g &> /dev/null
+
+if [ -n "${4}" ]; then
+  API_HOST=$4
 else
-  WORKSPACE="demo.optimacros.com"
+  API_HOST="demo.optimacros.com"
 fi
 
-if [ -n "$6" ]; then
-  FREEPORT=$6
+PROJECT_DIRECTORY=$1
+RELATIVE_REPORT_DIRECTORY="reports"
+FAILED_PARSER="node ${PROJECT_DIRECTORY}/bin/cucumber-failed-parser.js"
+ID=$3
+
+cd ${PROJECT_DIRECTORY}
+
+
+if [ "${2}" = "@all" ]; then
+  COMMAND="yarn run test:bdd --reportsDirectory=\"${RELATIVE_REPORT_DIRECTORY}\" --reportId=\"${ID}\" --silentMode=true --useLocalProxy=true --apiHost=\"${API_HOST}\""
 else
-  FREEPORT=$(random_free_tcp_port)
+  SETTING=$(echo "${2}"| cut -d':' -f 1)
+  VALUE=$(echo "${2}"| cut -d':' -f 2)
+  COMMAND="yarn run test:bdd --reportsDirectory=\"${RELATIVE_REPORT_DIRECTORY}\" --reportId=\"${ID}\" --silentMode=true --useLocalProxy=true --${SETTING} \"${VALUE}\" --apiHost=\"${API_HOST}\""
 fi
 
-if [ -n "$5" ]; then
-  HOST_IP=$5
+echo -e '\E[37;44m'"\033[1m YARN COMMAND ${COMMAND} \033[0m"
+/bin/bash -c "${COMMAND}"
+
+isFailed=$(/bin/bash -c "${FAILED_PARSER} --patch=\"${ABSOLUTE_REPORT_DIRECTORY}/${ID}.report.json\"")
+
+if [ "${isFailed}" = "true" ]; then
+
+  echo -e "\x1b[5;41;37m THREAD BDD: FAILED!\x1b[0m"
+  sqlite3 -init <(echo ".timeout 3000") ${ABSOLUTE_REPORT_DIRECTORY}/test.db "UPDATE THREAD_STATUSES SET STATUS= '1' WHERE THREAD_ID= '${ID}';"
+  exit 1
+
 else
-  PPP_STATE=$(ip link show | grep ppp0)
-  if [ -n "$PPP_STATE" ]; then
-    HOST_IP="10.0.0.1"
-  else
-    HOST_IP="127.0.0.1"
-  fi
+
+  echo -e '\E[37;44m'"\033[1mTHREAD BDD: ENDED!\033[0m"
+  sqlite3 -init <(echo ".timeout 3000") ${ABSOLUTE_REPORT_DIRECTORY}/test.db "UPDATE THREAD_STATUSES SET STATUS= '0' WHERE THREAD_ID= '${ID}';"
+  exit 0
+
 fi
 
-if [ -n "$4" ]; then
-   ID=$4
-else
-   ID=$(uuidgen)
-fi
 
-if [ -n "$2" ]; then
-   AHOME=$2
-else
-   AHOME=$HOME
-fi
-
-cd $AHOME
-
-if [ ! -d "$ID" ]; then
-  mkdir $ID
-fi
-
-chmod 0777 $ID
-
-
-
-if [ -f "$AHOME/$ID/@rerun.txt" ]; then
-   echo -e '\E[37;44m'"\033[1m>>>THEARD >> RERUN MODE\033[0m"
-else
-   echo -e '\E[37;44m'"\033[1m>>>THEARD >> RUN MODE >> TIMEOUT 180 minutes\033[0m"
-fi
-
-if [ -n "$3" ]; then
-  SETTING=$(echo "$3"| cut -d':' -f 1)
-  VALUE=$(echo "$3"| cut -d':' -f 2)
-
-  #$SETTING=$VALUE example: filter=foo, tags=bar, skipMenu=baz
-
-  COMMAND="yarn run test:spec -- --$SETTING=$VALUE --apiHost=$WORKSPACE --workspace=$WORKSPACE --skipMenu"
-else
-  COMMAND="yarn run test:spec -- --apiHost=$WORKSPACE --workspace=$WORKSPACE --skipMenu --skipTags=blank,bug,modeller"
-fi
-
-echo -e '\E[37;44m'"\033[1m>>> COMMAND $COMMAND \033[0m"
-echo -e '\E[37;44m'"\033[1m>>> HOST_IP $HOST_IP \033[0m"
-echo -e '\E[37;44m'"\033[1m>>> FREEPORT $FREEPORT \033[0m"
-echo -e '\E[37;44m'"\033[1m>>> ID $ID \033[0m"
-echo -e '\E[37;44m'"\033[1m>>> AHOME $AHOME \033[0m"
-echo -e '\E[37;44m'"\033[1m>>> 1 $1 \033[0m"
-
-
-docker run --name "$ID" -p $HOST_IP:$FREEPORT:5900 -e HOST_IP="$HOST_IP" -e VNCPORT="$FREEPORT" -e ID="$ID" -e FAILEDPARSER="node ./bin/cucumber-failed-parser.js" -e RUN="$COMMAND" -v "$AHOME/$ID/":"/$ID" -v "$1/":"/project" varenikx/chrome-bdd:latest &
-
-# 60 minutes
-for i in $(seq 1 180)
-  do
-    #slep
-    sleep 60
-
-    if [ -f "$AHOME/$ID/1" ]; then
-      # failed
-      # for jenkins failed
-      killContainer
-      sleep 10
-      exit 1
-    fi
-
-    if [ -f "$AHOME/$ID/0" ]; then
-      # ok
-      killContainer
-      sleep 10
-      exit 0
-    fi
-
-    if (( $i == 175 )); then
-      killContainer
-      sleep 10
-      echo -e "\x1b[5;41;37m>>>THEARD FAILED TIMEOUT \x1b[0m"
-      exit 1
-    fi
-done
