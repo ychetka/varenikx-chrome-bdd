@@ -5,6 +5,7 @@
 ##$3 id
 ##$4 apiHost
 ##$5 REPORT_PATCH
+##$6 THREAD_DEBUG_PORT
 
 ID=
 PROJECT_DIRECTORY=
@@ -12,7 +13,7 @@ API_HOST=
 ABSOLUTE_REPORT_DIRECTORY=$5
 COMMAND=
 FAILED_PARSER=
-
+THREAD_DEBUG_PORT=$6
 
 PROJECT_NODE_VERSION="v8.11.2"
 source ~/.nvm/nvm.sh &> /dev/null
@@ -36,11 +37,11 @@ cd ${PROJECT_DIRECTORY}
 
 
 if [ "${2}" = "@all" ]; then
-  COMMAND="yarn run test:bdd --reportsDirectory=\"${RELATIVE_REPORT_DIRECTORY}\" --reportId=\"${ID}\" --silentMode=true --useLocalProxy=true --apiHost=\"${API_HOST}\""
+  COMMAND="yarn run test:bdd --reportsDirectory=\"${RELATIVE_REPORT_DIRECTORY}\" --reportId=\"${ID}\" --silentMode=true --useLocalProxy=true --apiHost=\"${API_HOST}\" --remoteDebugPort=\"${THREAD_DEBUG_PORT}\""
 else
   SETTING=$(echo "${2}"| cut -d':' -f 1)
   VALUE=$(echo "${2}"| cut -d':' -f 2)
-  COMMAND="yarn run test:bdd --reportsDirectory=\"${RELATIVE_REPORT_DIRECTORY}\" --reportId=\"${ID}\" --silentMode=true --useLocalProxy=true --${SETTING} \"${VALUE}\" --apiHost=\"${API_HOST}\""
+  COMMAND="yarn run test:bdd --reportsDirectory=\"${RELATIVE_REPORT_DIRECTORY}\" --reportId=\"${ID}\" --silentMode=true --useLocalProxy=true --${SETTING} \"${VALUE}\" --apiHost=\"${API_HOST}\" --remoteDebugPort=\"${THREAD_DEBUG_PORT}\""
 fi
 
 echo -e '\E[37;44m'"\033[1m YARN COMMAND ${COMMAND} \033[0m"

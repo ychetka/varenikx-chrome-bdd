@@ -47,6 +47,7 @@ THREAD_DIRS=( )
 THREAD_LOGS=( )
 THREAD_RERUNS=( )
 THREADS_RERUN_FEATURE_LOGS=( )
+THREAD_DEBUG_PORTS=( )
 
 #./initenv.sh
 PROJECT_NODE_VERSION="v8.11.2"
@@ -57,6 +58,30 @@ nvm alias default ${PROJECT_NODE_VERSION} &> /dev/null
 npm install yarn -g &> /dev/null
 
 
+function random_free_tcp_port {
+  local ports="${1:-1}" interim="${2:-2048}" spacing=32
+  local free_ports=( )
+  local taken_ports=( $( netstat -aln | egrep ^tcp | fgrep LISTEN |
+                         awk '{print $4}' | egrep -o '[0-9]+$' |
+                         sort -n | uniq ) )
+  interim=$(( interim + (RANDOM % spacing) ))
+
+  for taken in "${taken_ports[@]}" 65535
+    do
+      while [[ $interim -lt $taken && ${#free_ports[@]} -lt $ports ]]
+      do
+        free_ports+=( $interim )
+        interim=$(( interim + spacing + (RANDOM % spacing) ))
+      done
+      interim=$(( interim > taken + spacing
+                  ? interim
+                  : taken + spacing + (RANDOM % spacing) ))
+  done
+
+  [[ ${#free_ports[@]} -ge $ports ]] || return 2
+
+  echo "${free_ports[@]}"
+}
 
 function killAllThreads {
   kill -9 $(ps aux | grep 'puppeteer' | awk '{print $2}') > /dev/null
@@ -134,13 +159,13 @@ if [ -z "$THREAD_RERUN_FEATURES" ]
     THREAD_RERUN_FEATURES=THREAD_GROUPS[$1]
 fi
 
-  echo -e '\E[37;44m'"\033[1mWILL RERUN ${THREAD_RERUN_FEATURES} \033[0m"
+  echo -e '\E[37;44m'"\033[1mWILL RERUN ${THREAD_RERUN_FEATURES}. DEBUG AT ${THREAD_DEBUG_PORTS[$1]} \033[0m"
   THREAD_GROUPS[$1]="filter:${THREAD_RERUN_FEATURES}"
 fi
 
 sqlite3 -init <(echo ".timeout 3000") ${ABSOLUTE_REPORT_DIRECTORY}/test.db "UPDATE THREAD_STATUSES SET STATUS= '2' WHERE THREAD_ID= '${THREAD_IDS[$1]}';"
 THREADS_RERUN_FEATURE_LOGS[$index]="${THREADS_RERUN_FEATURE_LOGS[$index]} ${THREAD_RERUN_FEATURES}"
-~/file-bdd-runner.sh "${HOME}/src" "${THREAD_GROUPS[$1]}" "${THREAD_IDS[$1]}" "${THREAD_WORKSPACES[$1]}" "${ABSOLUTE_REPORT_DIRECTORY}" > "${THREAD_LOGS[$1]}" &
+~/file-bdd-runner.sh "${HOME}/src" "${THREAD_GROUPS[$1]}" "${THREAD_IDS[$1]}" "${THREAD_WORKSPACES[$1]}" "${ABSOLUTE_REPORT_DIRECTORY}" "${THREAD_DEBUG_PORTS[$1]}" > "${THREAD_LOGS[$1]}" &
 
 sleep 3
 }
@@ -188,6 +213,7 @@ for i in $(seq 0 ${LAST_THREAD_INDEX})
     THREAD_STATE=2
     THREAD_RERUN=5
     THREAD_START_TIME=$(date +"%T")
+    THREAD_DEBUG_PORT=$(random_free_tcp_port)
 
     THREAD_IDS=( "${THREAD_IDS[@]}" "$THREAD_ID" )
     THREAD_LOGS=( "${THREAD_LOGS[@]}" "$THREAD_LOG" )
@@ -195,12 +221,13 @@ for i in $(seq 0 ${LAST_THREAD_INDEX})
     THREAD_WORKSPACES=( "${THREAD_WORKSPACES[@]}" "$THREAD_WORKSPACE" )
     THREAD_RERUNS=( "${THREAD_RERUNS[@]}" "$THREAD_RERUN" )
     THREAD_START_TIMES=( "${THREAD_START_TIMES[@]}" "$THREAD_START_TIME" )
+    THREAD_DEBUG_PORTS=( "${THREAD_DEBUG_PORTS[@]}" "$THREAD_DEBUG_PORT" )
 
     sqlite3 -init <(echo ".timeout 3000") ${ABSOLUTE_REPORT_DIRECTORY}/test.db  "INSERT INTO THREAD_STATUSES (THREAD_ID,STATUS,SHOW_STATUS) values ('${THREAD_ID}','${THREAD_STATE}','true');"
     THREADS_RERUN_FEATURE_LOGS[$index]=""
-    echo -e '\E[37;44m'"\033[1m:RUN THREAD $THREAD_GROUP with id: $THREAD_ID at $THREAD_WORKSPACE \033[0m"
+    echo -e '\E[37;44m'"\033[1m:RUN THREAD $THREAD_GROUP with id: $THREAD_ID at $THREAD_WORKSPACE. DEBUG AT ${THREAD_DEBUG_PORT} \033[0m"
 
-    ~/file-bdd-runner.sh "${HOME}/src" "${THREAD_GROUP}" "${THREAD_ID}" "${THREAD_WORKSPACE}" "${ABSOLUTE_REPORT_DIRECTORY}" > "${THREAD_LOG}" &
+    ~/file-bdd-runner.sh "${HOME}/src" "${THREAD_GROUP}" "${THREAD_ID}" "${THREAD_WORKSPACE}" "${ABSOLUTE_REPORT_DIRECTORY}" "${THREAD_DEBUG_PORT}" > "${THREAD_LOG}" &
 
     sleep 3
 done
