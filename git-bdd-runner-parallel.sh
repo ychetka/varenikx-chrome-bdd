@@ -35,6 +35,7 @@ WITH_RERUNS=$4
 SKIP_GET_AND_COMPILE=$5
 ROOT_ID=$(uuidgen)
 ABSOLUTE_REPORT_DIRECTORY="$HOME/src/reports"
+ARCHIVE_REPORT_DIRECTORY="$HOME/reports"
 THREADS_COUNT=$(echo ${FEATURES} | jq -r '. | length')
 let LAST_THREAD_INDEX=$THREADS_COUNT-1
 THREAD_IDS=( )
@@ -59,7 +60,6 @@ npm install yarn -g &> /dev/null
 
 function killAllThreads {
   kill -9 $(ps aux | grep 'puppeteer' | awk '{print $2}') > /dev/null
-#  kill -9 $(ps aux | grep 'http-server' | awk '{print $2}') > /dev/null
   kill -9 $(ps aux | grep 'cucumber' | awk '{print $2}') > /dev/null
   kill -9 $(ps aux | grep 'yaxy' | awk '{print $2}') > /dev/null
   kill -9 $(ps aux | grep 'node' | awk '{print $2}') > /dev/null
@@ -95,7 +95,7 @@ function printFailedState {
     threadStatus=$(sqlite3 -init <(echo ".timeout 3000") ${ABSOLUTE_REPORT_DIRECTORY}/test.db  "SELECT STATUS FROM THREAD_STATUSES WHERE THREAD_ID ='${threadId}' LIMIT 1")
 
     if (( ${threadStatus} == "1" )); then
-       echo -e "\x1b[5;41;37mFAILED ${THREAD_GROUPS[$index]} STOUT IN: http://95.216.44.235:8099/${THREAD_IDS[$index]}.stdout.txt \x1b[0m"
+       echo -e "\x1b[5;41;37mFAILED ${THREAD_GROUPS[$index]} \x1b[0m"
     fi
     sleep 5
   done
@@ -178,8 +178,6 @@ echo -e "\x1b[5;42;37m:WILL RUN $THREADS_COUNT THREADS WITH TIMEOUT 120 MINUTES\
 sqlite3 -init <(echo ".timeout 3000") ${ABSOLUTE_REPORT_DIRECTORY}/test.db  "CREATE TABLE THREAD_STATUSES (ID INTEGER PRIMARY KEY AUTOINCREMENT, THREAD_ID TEXT,STATUS TEXT,SHOW_STATUS TEXT);"
 
 ############## START THREADS
-~/share-reports-worker.sh > /dev/null &
-
 
 for i in $(seq 0 ${LAST_THREAD_INDEX})
   do
@@ -243,11 +241,20 @@ if [ -z "$(echo ${THREAD_STATUSES[*]} | grep '2')" ]; then
       echo -e "\x1b[5;42;37m:::ALL THREADS BDD COMPLETED !!! \x1b[0m"
       echo -e "\x1b[5;42;37m###########################################################\x1b[0m"
 
+#     copy to reports archive
+      mkdir ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}
+      chmod 0755 ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}
+      cp -Rf ${ABSOLUTE_REPORT_DIRECTORY} ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}
+
       exit 0
     fi
 
     else
 #   all threads completed (but may be have failed)
+    mkdir ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}
+    chmod 0755 ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}
+    cp -Rf ${ABSOLUTE_REPORT_DIRECTORY} ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}
+
     killAllThreads
     exit 1
   fi
@@ -291,6 +298,10 @@ if (( ${THREAD_STATUSES[$index]} == "1" )); then
 
       echo -e '\E[37;44m'"\033[1m:RERUN IS EMPTY FOR $index  ${THREAD_GROUPS[$index]} (${THREAD_IDS[$index]})\x1b[0m"
       echo -e "\x1b[5;41;37m:THREAD FAILED !!! (${THREAD_IDS[$index]})\x1b[0m"
+
+      mkdir ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}
+      chmod 0755 ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}
+      cp -Rf ${ABSOLUTE_REPORT_DIRECTORY} ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}
 
       killAllThreads
       printFailedState
