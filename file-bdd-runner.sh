@@ -44,23 +44,29 @@ else
   COMMAND="yarn run test:bdd --reportsDirectory=\"${RELATIVE_REPORT_DIRECTORY}\" --reportId=\"${ID}\" --silentMode=true --useLocalProxy=true --${SETTING} \"${VALUE}\" --apiHost=\"${API_HOST}\" --remoteDebugPort=\"${THREAD_DEBUG_PORT}\""
 fi
 
-echo -e '\E[37;44m'"\033[1m YARN COMMAND ${COMMAND} \033[0m"
+echo -e "YARN COMMAND ${COMMAND}"
 /bin/bash -c "${COMMAND}"
 
 isFailed=$(/bin/bash -c "${FAILED_PARSER} --patch=\"${ABSOLUTE_REPORT_DIRECTORY}/${ID}.report.json\"")
 
 if [ "${isFailed}" = "true" ]; then
-
-  echo -e "\x1b[5;41;37m THREAD BDD: FAILED!\x1b[0m"
+  echo -e "THREAD BDD FAILED"
   sqlite3 -init <(echo ".timeout 3000") ${ABSOLUTE_REPORT_DIRECTORY}/test.db "UPDATE THREAD_STATUSES SET STATUS= '1' WHERE THREAD_ID= '${ID}';"
+
+  debugSqliteStatusAfterWrite=$(sqlite3 -init <(echo ".timeout 3000") ${ABSOLUTE_REPORT_DIRECTORY}/test.db "SELECT STATUS FROM THREAD_STATUSES WHERE THREAD_ID ='${ID}' LIMIT 1")
+  echo ">> THREAD ${ID} :: debugSqliteStatusAfterWrite ${debugSqliteStatusAfterWrite}"
+
   exit 1
 
 else
 
-  echo -e '\E[37;44m'"\033[1mTHREAD BDD: ENDED!\033[0m"
+  echo -e "THREAD BDD ENDED"
   sqlite3 -init <(echo ".timeout 3000") ${ABSOLUTE_REPORT_DIRECTORY}/test.db "UPDATE THREAD_STATUSES SET STATUS= '0' WHERE THREAD_ID= '${ID}';"
+
+  debugSqliteStatusAfterWrite=$(sqlite3 -init <(echo ".timeout 3000") ${ABSOLUTE_REPORT_DIRECTORY}/test.db "SELECT STATUS FROM THREAD_STATUSES WHERE THREAD_ID ='${ID}' LIMIT 1")
+
+  echo ">> THREAD ${ID} :: debugSqliteStatusAfterWrite ${debugSqliteStatusAfterWrite}"
+
   exit 0
 
 fi
-
-

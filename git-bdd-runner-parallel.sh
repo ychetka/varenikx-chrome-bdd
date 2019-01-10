@@ -26,13 +26,17 @@
 #EXAMPLE
 #~/git-bdd-runner-parallel.sh '{"repository":"optimacros/optimacros_frontend","token":"517f7a241b07cbe16dfa20e6c0902076962802da","pullRequestId":"122","branch":"OM-727"}' '["tags:@service and not @bug", "tags:@service and not @bug", "tags:@service and not @bug", "tags:@service and not @bug", "tags:@service and not @bug"]' '["bdd1.optimacros.com", "bdd1.optimacros.com", "bdd2.optimacros.com", "bdd2.optimacros.com", "bdd3.optimacros.com"]'
 
-DEBUG=0
+DEBUG=1
 
 GIT=$1
 FEATURES=$2
 WORKSPACES=$3
 WITH_RERUNS=$4
 SKIP_GET_AND_COMPILE=$5
+
+LOCAL_INTERFACE_IP="127.0.0.1"
+EXTERNAL_INTERFACE_IP="95.216.44.235"
+
 ROOT_ID=$(uuidgen)
 ABSOLUTE_REPORT_DIRECTORY="$HOME/src/reports"
 ARCHIVE_REPORT_DIRECTORY="$HOME/reports"
@@ -57,37 +61,32 @@ nvm use ${PROJECT_NODE_VERSION} &> /dev/null
 nvm alias default ${PROJECT_NODE_VERSION} &> /dev/null
 npm install yarn -g &> /dev/null
 
+#$1 INTERFACE IP
+function getEmptyInterfacePort(){
+    INTERFACE=$1
+    LPORT=32768;
+    UPORT=60999;
+    while true; do
+        MPORT=$[$LPORT + ($RANDOM % $UPORT)];
+        (echo "" >/dev/tcp/${INTERFACE}/${MPORT}) >/dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            echo $MPORT;
+            return 0;
+        fi
+    done
+}
 
-function random_free_tcp_port {
-  local ports="${1:-1}" interim="${2:-2048}" spacing=32
-  local free_ports=( )
-  local taken_ports=( $( netstat -aln | egrep ^tcp | fgrep LISTEN |
-                         awk '{print $4}' | egrep -o '[0-9]+$' |
-                         sort -n | uniq ) )
-  interim=$(( interim + (RANDOM % spacing) ))
+#$1 local interface port
+#$2 external interface port
+function forwardLocalPortToExternalPort(){
+    local LOCAL_PORT=$1
+    local EXTERNAL_PORT=$2
 
-  for taken in "${taken_ports[@]}" 65535
-    do
-      while [[ $interim -lt $taken && ${#free_ports[@]} -lt $ports ]]
-      do
-        free_ports+=( $interim )
-        interim=$(( interim + spacing + (RANDOM % spacing) ))
-      done
-      interim=$(( interim > taken + spacing
-                  ? interim
-                  : taken + spacing + (RANDOM % spacing) ))
-  done
-
-  [[ ${#free_ports[@]} -ge $ports ]] || return 2
-
-  echo "${free_ports[@]}"
+    socat tcp-listen:${EXTERNAL_PORT},fork tcp:${LOCAL_INTERFACE_IP}:${LOCAL_PORT} > "${ABSOLUTE_REPORT_DIRECTORY}/socat_port_${EXTERNAL_PORT}.log" &
 }
 
 function killAllThreads {
-  kill -9 $(ps aux | grep 'puppeteer' | awk '{print $2}') > /dev/null
-  kill -9 $(ps aux | grep 'cucumber' | awk '{print $2}') > /dev/null
-  kill -9 $(ps aux | grep 'yaxy' | awk '{print $2}') > /dev/null
-  kill -9 $(ps aux | grep 'node' | awk '{print $2}') > /dev/null
+  ~/bdd-killer.sh "${ABSOLUTE_REPORT_DIRECTORY}/killer.log" &
 }
 
 function printCompletedState {
@@ -182,9 +181,11 @@ if [ -z "$SKIP_GET_AND_COMPILE" ]
 fi
 
 # run server
-if [ -z "$(netstat -an | grep 8558)" ]; then
-  ~/server-worker.sh > /dev/null &
+if (( DEBUG == "1" )); then
+    echo "SERVER LOG: ${ABSOLUTE_REPORT_DIRECTORY}/server.log"
 fi
+
+~/server-worker.sh "${ABSOLUTE_REPORT_DIRECTORY}/server.log" &
 
 if [ ! -d "${ABSOLUTE_REPORT_DIRECTORY}" ]; then
   mkdir "${ABSOLUTE_REPORT_DIRECTORY}"
@@ -213,7 +214,7 @@ for i in $(seq 0 ${LAST_THREAD_INDEX})
     THREAD_STATE=2
     THREAD_RERUN=5
     THREAD_START_TIME=$(date +"%T")
-    THREAD_DEBUG_PORT=$(random_free_tcp_port)
+    THREAD_DEBUG_PORT=$(getEmptyInterfacePort ${EXTERNAL_INTERFACE_IP})
 
     THREAD_IDS=( "${THREAD_IDS[@]}" "$THREAD_ID" )
     THREAD_LOGS=( "${THREAD_LOGS[@]}" "$THREAD_LOG" )
@@ -226,6 +227,10 @@ for i in $(seq 0 ${LAST_THREAD_INDEX})
     sqlite3 -init <(echo ".timeout 3000") ${ABSOLUTE_REPORT_DIRECTORY}/test.db  "INSERT INTO THREAD_STATUSES (THREAD_ID,STATUS,SHOW_STATUS) values ('${THREAD_ID}','${THREAD_STATE}','true');"
     THREADS_RERUN_FEATURE_LOGS[$index]=""
     echo -e '\E[37;44m'"\033[1m:RUN THREAD $THREAD_GROUP with id: $THREAD_ID at $THREAD_WORKSPACE. DEBUG AT ${THREAD_DEBUG_PORT} \033[0m"
+
+    threadLocalPort=$(getEmptyInterfacePort ${LOCAL_INTERFACE_IP})
+
+    forwardLocalPortToExternalPort ${threadLocalPort} ${THREAD_DEBUG_PORT}
 
     ~/file-bdd-runner.sh "${HOME}/src" "${THREAD_GROUP}" "${THREAD_ID}" "${THREAD_WORKSPACE}" "${ABSOLUTE_REPORT_DIRECTORY}" "${THREAD_DEBUG_PORT}" > "${THREAD_LOG}" &
 
@@ -256,37 +261,46 @@ done
 # check all completed
 if [ -z "$(echo ${THREAD_STATUSES[*]} | grep '2')" ]; then
 
-  if [ "${WITH_RERUNS}" = "true" ]; then
-
-    if [ -z "$(echo ${THREAD_STATUSES[*]} | grep '1')" ]; then
-      #all threads ok
-
-#     killAllThreads
-      printCompletedState
-
-      echo -e "\x1b[5;42;37m###########################################################\x1b[0m"
-      echo -e "\x1b[5;42;37m:::ALL THREADS BDD COMPLETED !!! \x1b[0m"
-      echo -e "\x1b[5;42;37m###########################################################\x1b[0m"
-
-#     copy to reports archive
-      mkdir ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}
-      chmod 0755 ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}
-      cp -Rf ${ABSOLUTE_REPORT_DIRECTORY} ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}
-
-      exit 0
+    if (( DEBUG == "1" )); then
+        echo "NOT EXIST THREADS WITH STATUS 2!"
     fi
 
-    else
-#   all threads completed (but may be have failed)
-    mkdir ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}
-    chmod 0755 ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}
-    cp -Rf ${ABSOLUTE_REPORT_DIRECTORY} ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}
+    if [ -z "$(echo ${THREAD_STATUSES[*]} | grep '1')" ]; then
+#       all threads ok
 
-    killAllThreads
-    exit 1
-  fi
+        printCompletedState
 
+        echo -e "\x1b[5;42;37m###########################################################\x1b[0m"
+        echo -e "\x1b[5;42;37m:::ALL THREADS BDD COMPLETED !!! \x1b[0m"
+        echo -e "\x1b[5;42;37m###########################################################\x1b[0m"
 
+#       copy to reports archive
+        mkdir ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}
+        chmod 0755 ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}
+        cp -Rf ${ABSOLUTE_REPORT_DIRECTORY} ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}
+
+        exit 0
+    fi
+
+    if [ "${WITH_RERUNS}" != "true" ]; then
+
+        if (( DEBUG == "1" )); then
+            echo "RUN WITHOUT RERUNS, AND EXIST THREADS WITH STATUS 1"
+        fi
+
+#       all threads completed (but may be have failed)
+        mkdir ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID} > /dev/null
+        chmod 0755 ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID} > /dev/null
+        cp -Rf ${ABSOLUTE_REPORT_DIRECTORY} ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}  > /dev/null &
+
+        killAllThreads
+        printFailedState
+
+        echo -e "\x1b[5;41;37m###########################################################\x1b[0m"
+        echo -e "\x1b[5;41;37m:::BDD FAILED !!! \x1b[0m"
+        echo -e "\x1b[5;41;37m###########################################################\x1b[0m"
+        exit 1
+    fi
 fi
 
 echo -e '\E[37;44m'"\033[1m====================================\033[0m"
@@ -295,12 +309,18 @@ echo -e '\E[37;44m'"\033[1m====================================\033[0m"
 for index in $(seq 0 ${LAST_THREAD_INDEX})
 do
 
+debugThreadId=${THREAD_IDS[$index]}
+debugThreadGroup=${THREAD_GROUPS[$index]}
+debugSqliteStatus=$(sqlite3 -init <(echo ".timeout 3000") ${ABSOLUTE_REPORT_DIRECTORY}/test.db "SELECT STATUS FROM THREAD_STATUSES WHERE THREAD_ID ='${debugThreadId}' LIMIT 1")
+
+echo "STATUS from SQLITE3: ${debugSqliteStatus} from STATUSES: ${THREAD_STATUSES[$index]} ::: id: ${debugThreadId}"
+
 # check any thread is rerun count = 0 and status = 1
 # force kill all and echo bdd failed
 if (( ${THREAD_STATUSES[$index]} == "1" )); then
 
   if (( DEBUG == "1" )); then
-    echo "STATUS FAILED: ${THREAD_STATUSES[$index]}"
+    echo "STATUS 1: ${THREAD_STATUSES[$index]}"
   fi
 
   if [ "${WITH_RERUNS}" = "true" ]; then
@@ -341,10 +361,11 @@ if (( ${THREAD_STATUSES[$index]} == "1" )); then
   fi
 fi
 
+
 if (( ${THREAD_STATUSES[$index]} == "2" )); then
 
   if (( DEBUG == "1" )); then
-      echo "STATUS PROGRESS: ${THREAD_STATUSES[$index]}"
+    echo "STATUS 2: ${THREAD_STATUSES[$index]}"
   fi
 
   echo -e "\x1b[37;43m:THREAD  $index  ${THREAD_GROUPS[$index]} IN PROGRESS (${THREAD_IDS[$index]})... \x1b[0m"
@@ -352,10 +373,9 @@ fi
 
 if (( ${THREAD_STATUSES[$index]} == "0" )); then
 
-    if (( DEBUG == "1" )); then
-      echo "STATUS COMPLETED: ${THREAD_STATUSES[$index]}"
-      echo "SHOW STATUS: ${THREAD_SHOW_STATUSES[$index]}"
-    fi
+  if (( DEBUG == "1" )); then
+      echo "STATUS 0: ${THREAD_STATUSES[$index]}"
+  fi
 
     if [ "${THREAD_SHOW_STATUSES[$index]}" = "true" ]; then
 
@@ -381,6 +401,11 @@ done
 echo -e '\E[37;44m'"\033[1m====================================\033[0m"
 
 sleep 60
+
+if (( DEBUG == "1" )); then
+    echo "pause completed"
+fi
+
 
 done
 
