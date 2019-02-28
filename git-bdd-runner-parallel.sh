@@ -54,7 +54,7 @@ THREADS_RERUN_FEATURE_LOGS=( )
 THREAD_DEBUG_PORTS=( )
 
 #./initenv.sh
-PROJECT_NODE_VERSION="v8.11.2"
+PROJECT_NODE_VERSION="v9.4.0"
 source ~/.nvm/nvm.sh &> /dev/null
 nvm install ${PROJECT_NODE_VERSION} &> /dev/null
 nvm use ${PROJECT_NODE_VERSION} &> /dev/null
@@ -78,15 +78,23 @@ function getEmptyInterfacePort(){
 
 #$1 local interface port
 #$2 external interface port
+#$3 id
 function forwardLocalPortToExternalPort(){
     local LOCAL_PORT=$1
     local EXTERNAL_PORT=$2
+    local THREAD_ID=$3
 
-    socat tcp-listen:${EXTERNAL_PORT},fork tcp:${LOCAL_INTERFACE_IP}:${LOCAL_PORT} > "${ABSOLUTE_REPORT_DIRECTORY}/socat_port_${EXTERNAL_PORT}.log" &
+    socat tcp-listen:${EXTERNAL_PORT},fork tcp:${LOCAL_INTERFACE_IP}:${LOCAL_PORT} > "${ABSOLUTE_REPORT_DIRECTORY}/${THREAD_ID}_debug_port_${EXTERNAL_PORT}.log" &
 }
 
 function killAllThreads {
-  ~/bdd-killer.sh "${ABSOLUTE_REPORT_DIRECTORY}/killer.log" &
+  sudo $HOME/bdd-killer.sh "${ABSOLUTE_REPORT_DIRECTORY}/killer.log" &
+
+  sleep 20
+
+  sudo $HOME/bdd-killer.sh "${ABSOLUTE_REPORT_DIRECTORY}/killer.log" &
+
+  sleep 10
 }
 
 function printCompletedState {
@@ -230,7 +238,7 @@ for i in $(seq 0 ${LAST_THREAD_INDEX})
 
     threadLocalPort=$(getEmptyInterfacePort ${LOCAL_INTERFACE_IP})
 
-    forwardLocalPortToExternalPort ${threadLocalPort} ${THREAD_DEBUG_PORT}
+    forwardLocalPortToExternalPort ${threadLocalPort} ${THREAD_DEBUG_PORT} ${THREAD_ID}
 
     ~/file-bdd-runner.sh "${HOME}/src" "${THREAD_GROUP}" "${THREAD_ID}" "${THREAD_WORKSPACE}" "${ABSOLUTE_REPORT_DIRECTORY}" "${THREAD_DEBUG_PORT}" > "${THREAD_LOG}" &
 
@@ -275,9 +283,37 @@ if [ -z "$(echo ${THREAD_STATUSES[*]} | grep '2')" ]; then
         echo -e "\x1b[5;42;37m###########################################################\x1b[0m"
 
 #       copy to reports archive
-        mkdir ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}
-        chmod 0755 ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}
-        cp -Rf ${ABSOLUTE_REPORT_DIRECTORY} ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}
+
+        if (( DEBUG == "1" )); then
+            echo "!!!REPORTS"
+            echo "CREATE ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}"
+        fi
+
+        mkdir "${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}" > /dev/null
+
+        if (( DEBUG == "1" )); then
+            echo "CHMOD 0775 ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}"
+        fi
+
+        chmod 0755 ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID} > /dev/null
+
+        if (( DEBUG == "1" )); then
+            echo "COPY REPORTS ${ABSOLUTE_REPORT_DIRECTORY} ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}"
+        fi
+
+        cp -Rf ${ABSOLUTE_REPORT_DIRECTORY} ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID} > /dev/null
+
+        if (( DEBUG == "1" )); then
+            echo "BEFORE KILL"
+        fi
+
+        sleep 5
+
+        killAllThreads
+
+        if (( DEBUG == "1" )); then
+            echo "AFTER FIRST KILL, BEFORE EXIT 0"
+        fi
 
         exit 0
     fi
@@ -289,11 +325,31 @@ if [ -z "$(echo ${THREAD_STATUSES[*]} | grep '2')" ]; then
         fi
 
 #       all threads completed (but may be have failed)
-        mkdir ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID} > /dev/null
+        if (( DEBUG == "1" )); then
+            echo "!!!REPORTS"
+            echo "CREATE ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}"
+        fi
+
+        mkdir "${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}" > /dev/null
+
+        if (( DEBUG == "1" )); then
+            echo "CHMOD 0775 ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}"
+        fi
+
         chmod 0755 ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID} > /dev/null
-        cp -Rf ${ABSOLUTE_REPORT_DIRECTORY} ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}  > /dev/null &
+
+        if (( DEBUG == "1" )); then
+            echo "COPY REPORTS ${ABSOLUTE_REPORT_DIRECTORY} ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID}"
+        fi
+
+        cp -Rf ${ABSOLUTE_REPORT_DIRECTORY} ${ARCHIVE_REPORT_DIRECTORY}/${ROOT_ID} > /dev/null
 
         killAllThreads
+
+        if (( DEBUG == "1" )); then
+            echo "AFTER KILL"
+        fi
+
         printFailedState
 
         echo -e "\x1b[5;41;37m###########################################################\x1b[0m"
