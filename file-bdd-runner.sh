@@ -15,6 +15,16 @@ COMMAND=
 FAILED_PARSER=
 THREAD_DEBUG_PORT=$6
 
+
+if (( DEBUG == "1" )); then
+    echo "1 ${1}"
+    echo "2 ${2}"
+    echo "3 ${3}"
+    echo "4 ${4}"
+    echo "5 ${5}"
+    echo "6 ${6}"
+fi
+
 PROJECT_NODE_VERSION="v8.11.2"
 source ~/.nvm/nvm.sh &> /dev/null
 nvm install ${PROJECT_NODE_VERSION} &> /dev/null
@@ -35,6 +45,14 @@ ID=$3
 
 cd ${PROJECT_DIRECTORY}
 
+function forceBreakScript {
+  echo -e "THREAD BDD FAILED, ${API_HOST} Offline"
+  sqlite3 -init <(echo ".timeout 3000") ${ABSOLUTE_REPORT_DIRECTORY}/test.db "UPDATE THREAD_STATUSES SET STATUS= '1' WHERE THREAD_ID= '${ID}';"
+  exit 1
+}
+
+#need test api host
+nc -vz -w 5 ${API_HOST} 80 &> /dev/null && echo "${API_HOST} is online" || forceBreakScript
 
 if [ "${2}" = "@all" ]; then
   COMMAND="yarn run test:bdd --reportsDirectory=\"${RELATIVE_REPORT_DIRECTORY}\" --reportId=\"${ID}\" --silentMode=true --useLocalProxy=true --apiHost=\"${API_HOST}\" --remoteDebugPort=\"${THREAD_DEBUG_PORT}\""
@@ -51,22 +69,12 @@ isFailed=$(/bin/bash -c "${FAILED_PARSER} --patch=\"${ABSOLUTE_REPORT_DIRECTORY}
 
 if [ "${isFailed}" = "true" ]; then
   echo -e "THREAD BDD FAILED"
+
   sqlite3 -init <(echo ".timeout 3000") ${ABSOLUTE_REPORT_DIRECTORY}/test.db "UPDATE THREAD_STATUSES SET STATUS= '1' WHERE THREAD_ID= '${ID}';"
-
-  debugSqliteStatusAfterWrite=$(sqlite3 -init <(echo ".timeout 3000") ${ABSOLUTE_REPORT_DIRECTORY}/test.db "SELECT STATUS FROM THREAD_STATUSES WHERE THREAD_ID ='${ID}' LIMIT 1")
-  echo ">> THREAD ${ID} :: debugSqliteStatusAfterWrite ${debugSqliteStatusAfterWrite}"
-
   exit 1
-
 else
-
   echo -e "THREAD BDD ENDED"
+
   sqlite3 -init <(echo ".timeout 3000") ${ABSOLUTE_REPORT_DIRECTORY}/test.db "UPDATE THREAD_STATUSES SET STATUS= '0' WHERE THREAD_ID= '${ID}';"
-
-  debugSqliteStatusAfterWrite=$(sqlite3 -init <(echo ".timeout 3000") ${ABSOLUTE_REPORT_DIRECTORY}/test.db "SELECT STATUS FROM THREAD_STATUSES WHERE THREAD_ID ='${ID}' LIMIT 1")
-
-  echo ">> THREAD ${ID} :: debugSqliteStatusAfterWrite ${debugSqliteStatusAfterWrite}"
-
   exit 0
-
 fi

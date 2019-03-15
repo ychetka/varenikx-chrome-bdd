@@ -49,5 +49,7 @@ nvm install $NODE_VERSION
 nvm use --delete-prefix $NODE_VERSION
 nvm alias default $NODE_VERSION
 
+#/bin/bash -c "source $NVM_DIR/nvm.sh && nvm install $NODE_VERSION && nvm use --delete-prefix $NODE_VERSION && nvm alias default $NODE_VERSION"
+
 
 

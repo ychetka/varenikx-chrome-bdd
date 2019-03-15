@@ -15,24 +15,30 @@
 #  "./features/_web/ui/view"
 #]
 
-#$3 api hosts for threads - '["bdd1.optimacros.com", "bdd1.optimacros.com", "bdd2.optimacros.com", "bdd2.optimacros.com", "bdd3.optimacros.com"]'
+#$3 - tags for all threads
+# (not @bug) and (not @for_future_use) and (not @excluded_from_bdd) and (not @blank)
 
-#$4 rerun
+#$4 api hosts for threads
+# '["bdd1.optimacros.com", "bdd1.optimacros.com", "bdd2.optimacros.com", "bdd2.optimacros.com", "bdd3.optimacros.com"]'
 
-#$5 boolean - skip git, server and compile
+#$5 - rerun
+# boolean
 
+#$6 - skip git, server and compile
+# boolean
 
 
 #EXAMPLE
 #~/git-bdd-runner-parallel.sh '{"repository":"optimacros/optimacros_frontend","token":"517f7a241b07cbe16dfa20e6c0902076962802da","pullRequestId":"122","branch":"OM-727"}' '["tags:@service and not @bug", "tags:@service and not @bug", "tags:@service and not @bug", "tags:@service and not @bug", "tags:@service and not @bug"]' '["bdd1.optimacros.com", "bdd1.optimacros.com", "bdd2.optimacros.com", "bdd2.optimacros.com", "bdd3.optimacros.com"]'
 
-DEBUG=1
+export DEBUG=0
 
 GIT=$1
 FEATURES=$2
-WORKSPACES=$3
-WITH_RERUNS=$4
-SKIP_GET_AND_COMPILE=$5
+ALL_THREADS_TAGS=$3
+WORKSPACES=$4
+WITH_RERUNS=$5
+SKIP_GET_AND_COMPILE=$6
 
 LOCAL_INTERFACE_IP="127.0.0.1"
 EXTERNAL_INTERFACE_IP="95.216.44.235"
@@ -111,7 +117,7 @@ function printCompletedState {
 
         if [ -z "$threadRerunsLog" ]
           then
-           echo -e "\x1b[5;42;37m:THREAD ${threadId} ${THREAD_GROUPS[$index]} COMPLETED WITH'T RERUNS. WAS START:${threadStartTime} END:${threadEndTime}.\x1b[0m"
+           echo -e "\x1b[5;42;37m:THREAD ${threadId} ${THREAD_GROUPS[$index]} COMPLETED. WAS START:${threadStartTime} END:${threadEndTime}.\x1b[0m"
           else
            echo -e "\x1b[5;42;37m:THREAD ${threadId} ${THREAD_GROUPS[$index]} COMPLETED WITH RERUNS. WAS START:${threadStartTime} END:${threadEndTime}.\x1b[0m"
            echo -e "\x1b[37;43m:THREAD RERUNS ${threadRerunsLog} \x1b[0m"
@@ -152,27 +158,41 @@ function parseRerunFile {
 }
 
 #$1 thead index
+#$2 thead rerun number
 function rerunFailedThreads {
 THREAD_STATE=2
+THREAD_RERUN_NUMBER=$2
 RERUN_PATCH="${ABSOLUTE_REPORT_DIRECTORY}/${THREAD_IDS[$1]}.rerun.txt"
-
+THREAD_RERUN_FEATURES=${THREAD_GROUPS[$1]}
+THREAD_LOG="${ABSOLUTE_REPORT_DIRECTORY}/${THREAD_IDS[$1]}.rerun.${THREAD_RERUN_NUMBER}.stdout.txt"
 
 if [ -f "${RERUN_PATCH}" ]; then
-# generate THREAD_GROUPS from rerun file
+  #generate THREAD_GROUPS from rerun file
   THREAD_RERUN_FEATURES="$(parseRerunFile ${RERUN_PATCH})"
-
-if [ -z "$THREAD_RERUN_FEATURES" ]
-  then
-    THREAD_RERUN_FEATURES=THREAD_GROUPS[$1]
 fi
 
-  echo -e '\E[37;44m'"\033[1mWILL RERUN ${THREAD_RERUN_FEATURES}. DEBUG AT ${THREAD_DEBUG_PORTS[$1]} \033[0m"
-  THREAD_GROUPS[$1]="filter:${THREAD_RERUN_FEATURES}"
+if [ -z "$THREAD_RERUN_FEATURES" ]; then
+  THREAD_RERUN_FEATURES=${THREAD_GROUPS[$1]}
 fi
+
+#THREAD_RERUN_FEATURES может содержать как пути для filters так и tags
+if ($(echo ${THREAD_RERUN_FEATURES} | grep -q '^tags:')); then
+  #tags
+  THREAD_GROUPS[$1]=${THREAD_RERUN_FEATURES}
+  else
+  THREAD_GROUPS[$1]="filter:${THREAD_RERUN_FEATURES} --tags '${ALL_THREADS_TAGS}'"
+fi
+
+echo -e '\E[37;44m'"\033[1mWILL RERUN ${THREAD_GROUPS[$1]}. DEBUG AT ${THREAD_DEBUG_PORTS[$1]} \033[0m"
 
 sqlite3 -init <(echo ".timeout 3000") ${ABSOLUTE_REPORT_DIRECTORY}/test.db "UPDATE THREAD_STATUSES SET STATUS= '2' WHERE THREAD_ID= '${THREAD_IDS[$1]}';"
-THREADS_RERUN_FEATURE_LOGS[$index]="${THREADS_RERUN_FEATURE_LOGS[$index]} ${THREAD_RERUN_FEATURES}"
-~/file-bdd-runner.sh "${HOME}/src" "${THREAD_GROUPS[$1]}" "${THREAD_IDS[$1]}" "${THREAD_WORKSPACES[$1]}" "${ABSOLUTE_REPORT_DIRECTORY}" "${THREAD_DEBUG_PORTS[$1]}" > "${THREAD_LOGS[$1]}" &
+THREADS_RERUN_FEATURE_LOGS[$index]="${THREADS_RERUN_FEATURE_LOGS[$index]} ${THREAD_GROUPS[$1]}"
+
+if (( DEBUG == "1" )); then
+    echo "Call file-bdd-runner with ${THREAD_GROUPS[$1]}"
+fi
+
+~/file-bdd-runner.sh "${HOME}/src" "${THREAD_GROUPS[$1]}" "${THREAD_IDS[$1]}" "${THREAD_WORKSPACES[$1]}" "${ABSOLUTE_REPORT_DIRECTORY}" "${THREAD_DEBUG_PORTS[$1]}" > "${THREAD_LOG}" &
 
 sleep 3
 }
@@ -218,12 +238,21 @@ for i in $(seq 0 ${LAST_THREAD_INDEX})
     THREAD_ID=$(uuidgen)
     THREAD_LOG="${ABSOLUTE_REPORT_DIRECTORY}/${THREAD_ID}.stdout.txt"
     THREAD_GROUP=$(echo ${FEATURES} | jq -r '.['${i}']')
+
+    if ($(echo ${THREAD_GROUP} | grep -q '^tags:')); then
+      #tags
+      THREAD_GROUP="${THREAD_GROUP} and ${ALL_THREADS_TAGS}"
+    else
+      if ($(echo ${THREAD_GROUP} | grep -q '^filter')); then
+        THREAD_GROUP="${THREAD_GROUP} --tags '${ALL_THREADS_TAGS}'"
+      fi
+    fi
+
     THREAD_WORKSPACE=$(echo ${WORKSPACES} | jq -r '.['${i}']')
     THREAD_STATE=2
     THREAD_RERUN=5
     THREAD_START_TIME=$(date +"%T")
     THREAD_DEBUG_PORT=$(getEmptyInterfacePort ${EXTERNAL_INTERFACE_IP})
-
     THREAD_IDS=( "${THREAD_IDS[@]}" "$THREAD_ID" )
     THREAD_LOGS=( "${THREAD_LOGS[@]}" "$THREAD_LOG" )
     THREAD_GROUPS=( "${THREAD_GROUPS[@]}" "$THREAD_GROUP" )
@@ -369,7 +398,9 @@ debugThreadId=${THREAD_IDS[$index]}
 debugThreadGroup=${THREAD_GROUPS[$index]}
 debugSqliteStatus=$(sqlite3 -init <(echo ".timeout 3000") ${ABSOLUTE_REPORT_DIRECTORY}/test.db "SELECT STATUS FROM THREAD_STATUSES WHERE THREAD_ID ='${debugThreadId}' LIMIT 1")
 
-echo "STATUS from SQLITE3: ${debugSqliteStatus} from STATUSES: ${THREAD_STATUSES[$index]} ::: id: ${debugThreadId}"
+if (( DEBUG == "1" )); then
+  echo "STATUS from SQLITE3: ${debugSqliteStatus} from STATUSES: ${THREAD_STATUSES[$index]} ::: id: ${debugThreadId}"
+fi
 
 # check any thread is rerun count = 0 and status = 1
 # force kill all and echo bdd failed
@@ -391,7 +422,7 @@ if (( ${THREAD_STATUSES[$index]} == "1" )); then
       echo -e "\x1b[5;41;37m:RERUN(${THREAD_RERUNS[$index]}) FAILED THREAD  $index  ${THREAD_GROUPS[$index]} (${THREAD_IDS[$index]})\x1b[0m"
 
       let THREAD_RERUNS[$index]=${THREAD_RERUNS[$index]}-1
-      rerunFailedThreads "${index}"
+      rerunFailedThreads ${index} ${THREAD_RERUNS[$index]}
 
     else
       # rerun empty
